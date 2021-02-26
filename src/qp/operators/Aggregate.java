@@ -23,7 +23,7 @@ public class Aggregate extends Operator {
     int index;          // Index of attribute being aggregated in table
 
     int runningCount;           // Running count of tuples processed
-    Object runningAggregate;    // Running aggregate value of tuples processed
+    double runningAggregate;    // Running aggregate value of tuples processed
 
     /**
      * The following fields are required during execution of the aggregate operator
@@ -36,12 +36,24 @@ public class Aggregate extends Operator {
     /**
      * constructor
      **/
-    public Aggregate(Operator base, int type, int aggregateType, Attribute attr) {
+    public Aggregate(Operator base, int type, int aggregateType, Attribute attr) throws Exception {
         super(type);
         this.base = base;
         this.aggregateType = aggregateType;
         this.attr = attr;
-        this.count = 0;
+
+        // Checks for invalid operator
+        switch (this.aggregateType) {
+            case Aggregate.MIN:
+            case Aggregate.MAX:
+            case Aggregate.AVG:
+                if (attr.getType() == Attribute.STRING) {
+                    throw new Exception("Invalid attribute for given aggregate function");
+                }
+            case Aggregate.CNT:
+            default:
+                return;
+        }
     }
 
     public boolean open() {
@@ -49,6 +61,8 @@ public class Aggregate extends Operator {
         int tuplesize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tuplesize;
 
+        this.index = 0;
+        this.runningCount= 0;
         this.start = 0;
         this.eos = false;
         this.index = schema.indexOf(this.attr);
@@ -82,13 +96,13 @@ public class Aggregate extends Operator {
              **/
             for (i = start; i < inbatch.size() && (!outbatch.isFull()); ++i) {
                 Tuple present = inbatch.get(i);
-                this.count++;
-                Object value = present.dataAt(this.index);
+                this.runningCount++;
+                double value = (double) present.dataAt(this.index);
                 switch (this.aggregateType) {
                     case Aggregate.MIN:
-                        this.runningAggregate = min(value, this.runningAggregate);
+                        this.runningAggregate = Math.min(value, this.runningAggregate);
                     case Aggregate.MAX:
-                        this.runningAggregate = max(value, this.runningAggregate);
+                        this.runningAggregate = Math.max(value, this.runningAggregate);
                     case Aggregate.AVG:
                         this.runningAggregate += value;
                     default:
@@ -108,6 +122,12 @@ public class Aggregate extends Operator {
     }
 
     public boolean close() {
-
+        if (this.aggregateType == Aggregate.MAX) {
+            this.runningAggregate /= (double) this.runningCount;
+        } else if (this.aggregateType == Aggregate.CNT) {
+            this.runningAggregate = this.runningCount;
+        }
+        base.close();
+        return true;
     }
 }
