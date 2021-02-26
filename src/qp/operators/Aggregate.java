@@ -10,11 +10,6 @@ import qp.utils.Attribute;
 
 public class Aggregate extends Operator {
 
-    public static final int MIN = 0;
-    public static final int MAX = 1;
-    public static final int AVG = 2;
-    public static final int CNT = 3;
-
     Operator base;      // Base operator
     int batchsize;      // Number of tuples per outbatch
 
@@ -23,7 +18,7 @@ public class Aggregate extends Operator {
     int index;          // Index of attribute being aggregated in table
 
     int runningCount;           // Running count of tuples processed
-    double runningAggregate;    // Running aggregate value of tuples processed
+    Number runningAggregate;    // Running aggregate value of tuples processed
 
     /**
      * The following fields are required during execution of the aggregate operator
@@ -44,16 +39,24 @@ public class Aggregate extends Operator {
 
         // Checks for invalid operator
         switch (this.aggregateType) {
-            case Aggregate.MIN:
-            case Aggregate.MAX:
-            case Aggregate.AVG:
+            case Attribute.MIN:
+            case Attribute.MAX:
+            case Attribute.AVG:
                 if (attr.getType() == Attribute.STRING) {
                     throw new Exception("Invalid attribute for given aggregate function");
                 }
-            case Aggregate.CNT:
+            case Attribute.COUNT:
             default:
                 return;
         }
+    }
+
+    public Operator getBase() {
+        return base;
+    }
+
+    public void setBase(Operator base) {
+        this.base = base;
     }
 
     public boolean open() {
@@ -97,16 +100,37 @@ public class Aggregate extends Operator {
             for (i = start; i < inbatch.size() && (!outbatch.isFull()); ++i) {
                 Tuple present = inbatch.get(i);
                 this.runningCount++;
-                double value = (double) present.dataAt(this.index);
+                Number value;
+                if (this.attr.getProjectedType() == Attribute.INT) {
+                    value = (int) present.dataAt(this.index);
+                } else {
+                    value = (float) present.dataAt(this.index);
+                }
+
                 switch (this.aggregateType) {
-                    case Aggregate.MIN:
-                        this.runningAggregate = Math.min(value, this.runningAggregate);
-                    case Aggregate.MAX:
-                        this.runningAggregate = Math.max(value, this.runningAggregate);
-                    case Aggregate.AVG:
-                        this.runningAggregate += value;
+                    case Attribute.MIN:
+                        if (this.attr.getProjectedType() == Attribute.INT) {
+                            this.runningAggregate = Math.min(value.intValue(), this.runningAggregate.intValue());
+                        } else {
+                            this.runningAggregate = Math.min(value.floatValue(), this.runningAggregate.floatValue());
+                        }
+                        break;
+                    case Attribute.MAX:
+                        if (this.attr.getProjectedType() == Attribute.INT) {
+                            this.runningAggregate = Math.max(value.intValue(), this.runningAggregate.intValue());
+                        } else {
+                            this.runningAggregate = Math.max(value.floatValue(), this.runningAggregate.floatValue());
+                        }
+                        break;
+                    case Attribute.AVG:
+                        if (this.attr.getProjectedType() == Attribute.INT) {
+                            this.runningAggregate = this.runningAggregate.intValue() + value.intValue();
+                        } else {
+                            this.runningAggregate = this.runningAggregate.floatValue() + value.floatValue();
+                        }
+                        break;
                     default:
-                        continue;
+                        break;
                 }
             }
 
@@ -121,11 +145,22 @@ public class Aggregate extends Operator {
         return outbatch;
     }
 
+    public Number getResult() {
+        switch (this.aggregateType) {
+            case Attribute.MAX:
+            case Attribute.MIN:
+            case Attribute.AVG:
+                return this.runningAggregate.floatValue();
+            case Attribute.COUNT:
+                return this.runningAggregate.intValue();
+            default:
+                return -1;
+        }
+    } 
+    
     public boolean close() {
-        if (this.aggregateType == Aggregate.MAX) {
-            this.runningAggregate /= (double) this.runningCount;
-        } else if (this.aggregateType == Aggregate.CNT) {
-            this.runningAggregate = this.runningCount;
+        if (this.aggregateType == Attribute.AVG) {
+            this.runningAggregate = this.runningAggregate.floatValue() / (float) this.runningCount;
         }
         base.close();
         return true;

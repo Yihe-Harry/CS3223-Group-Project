@@ -66,6 +66,10 @@ public class RandomOptimizer {
             Operator base = makeExecPlan(((Project) node).getBase());
             ((Project) node).setBase(base);
             return node;
+        } else if (node.getOpType() == OpType.AGGREGATE) {
+            Operator base = makeExecPlan(((Aggregate) node).getBase());
+            ((Aggregate) node).setBase(base);
+            return node;
         } else {
             return node;
         }
