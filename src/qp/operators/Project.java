@@ -72,6 +72,7 @@ public class Project extends Operator {
         ArrayList<Integer> attrTupleIndex = new ArrayList<>();
         ArrayList<Attribute> aggregatedAttributes = new ArrayList<>();
         ArrayList<Integer> attrIndexes = new ArrayList<>();
+        int numAggregates = 0;                          // For aggregate indexing
 
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
@@ -80,10 +81,12 @@ public class Project extends Operator {
             attrIndex[i] = index;
 
             if (attr.getAggType() != Attribute.NONE) {
+                attrIndex[i] = baseSchema.getNumCols() + numAggregates;
                 attrTupleIndex.add(index);
                 attrIndexes.add(i);
-                Attribute actual = baseSchema.getAttribute(index);
-                aggregatedAttributes.add(actual);
+                attr.setType(baseSchema.getAttribute(index).getType());
+                aggregatedAttributes.add(attr);
+                numAggregates++;
             }
         }
 

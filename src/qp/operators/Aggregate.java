@@ -33,12 +33,14 @@ public class Aggregate extends Operator {
                      ArrayList<Integer> attrTupleIndex, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
+
         this.tuples = new LinkedList<>();
         this.aggregateFunction = new ArrayList<>();
-        this.runningAggregates = new ArrayList<>(attrTupleIndex.size());
-        this.attrIndexes = new ArrayList<>(attrIndexes);
-        this.attrTupleIndex = new ArrayList<>(attrTupleIndex);
         this.projectedAggregateTypes = new ArrayList<>();
+        this.attrIndexes = attrIndexes;
+        this.attrTupleIndex = attrTupleIndex;
+
+        this.runningAggregates = new ArrayList<>(attrTupleIndex.size());
         this.runningCount = 0;
 
         if (attrTupleIndex.size() != aggregatedAttributes.size()) {
@@ -95,33 +97,30 @@ public class Aggregate extends Operator {
         while (!result.isFull() && !this.tuples.isEmpty()) {
             Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
+            for (Object o : tuple.data()) {
+                current.add(o);
+            }
 
-            while (j < tuples.size()) {
-                if (this.attrIndexes.contains(j)) {
-                    int index = this.attrIndexes.indexOf(j);
-                    int projectedType = this.projectedAggregateTypes.get(index);
+            for (int i = 0; i < this.projectedAggregateTypes.size(); i++) {
+                int projectedType = this.projectedAggregateTypes.get(i);
 
-                    switch (this.aggregateFunction.get(index)) {
-                        case Attribute.AVG:
-                            if (projectedType == Attribute.REAL) {
-                                current.add(this.runningAggregates.get(j).floatValue() / this.runningCount);
-                            } else if (projectedType == Attribute.INT) {
-                                current.add(this.runningAggregates.get(j).intValue() / this.runningCount);
-                            }
-                            break;
-                        case Attribute.COUNT:
-                            current.add(this.runningCount);
-                            break;
-                        default:
-                            if (projectedType == Attribute.REAL) {
-                                current.add(this.runningAggregates.get(j).floatValue());
-                            } else if (projectedType == Attribute.INT) {
-                                current.add(this.runningAggregates.get(j).intValue());
-                            }
-                    }
-                } else {
-                    Object data = tuple.dataAt(j);
-                    current.add(data);
+                switch (this.aggregateFunction.get(i)) {
+                    case Attribute.AVG:
+                        if (projectedType == Attribute.REAL) {
+                            current.add(this.runningAggregates.get(i).floatValue() / this.runningCount);
+                        } else if (projectedType == Attribute.INT) {
+                            current.add(this.runningAggregates.get(i).intValue() / this.runningCount);
+                        }
+                        break;
+                    case Attribute.COUNT:
+                        current.add(this.runningCount);
+                        break;
+                    case Attribute.MIN, Attribute.MAX:
+                        if (projectedType == Attribute.REAL) {
+                            current.add(this.runningAggregates.get(i).floatValue());
+                        } else if (projectedType == Attribute.INT) {
+                            current.add(this.runningAggregates.get(i).intValue());
+                        }
                 }
             }
             Tuple outtuple = new Tuple(current);
@@ -144,14 +143,12 @@ public class Aggregate extends Operator {
                 this.runningCount++;
                 Tuple present = inbatch.get(i);
 
-                for (int j = 0; j < present.size(); j++) {
+                for (int j = 0; j < this.attrTupleIndex.size(); j++) {
                     int aggregateType = this.aggregateFunction.get(j);
-                    int aggregateIndex = this.attrTupleIndex.get(j);
-
-                    // If String, must be COUNT function
-                    if (this.projectedAggregateTypes.get(j) == Attribute.STRING) {
+                    if (aggregateType == Attribute.COUNT) {
                         continue;
                     }
+                    int aggregateIndex = this.attrTupleIndex.get(j);
                     Number value = (Number) present.dataAt(aggregateIndex);
                     Number currentValue = this.runningAggregates.get(j);
 
@@ -161,21 +158,21 @@ public class Aggregate extends Operator {
 
                         switch (aggregateType) {
                             case Attribute.MIN:
-                                if (this.aggregateFunction.get(j) == Attribute.INT) {
+                                if (this.projectedAggregateTypes.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, Math.min(value.intValue(), currentValue.intValue()));
                                 } else {
                                     this.runningAggregates.set(j, Math.min(value.floatValue(), currentValue.floatValue()));
                                 }
                                 break;
                             case Attribute.MAX:
-                                if (this.aggregateFunction.get(j) == Attribute.INT) {
+                                if (this.projectedAggregateTypes.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, Math.max(value.intValue(), currentValue.intValue()));
                                 } else {
                                     this.runningAggregates.set(j, Math.max(value.floatValue(), currentValue.floatValue()));
                                 }
                                 break;
                             case Attribute.AVG:
-                                if (this.aggregateFunction.get(j) == Attribute.INT) {
+                                if (this.projectedAggregateTypes.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, currentValue.intValue() + value.intValue());
                                 } else {
                                     this.runningAggregates.set(j, currentValue.floatValue() + value.floatValue());
