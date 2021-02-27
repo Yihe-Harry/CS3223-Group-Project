@@ -59,7 +59,6 @@ public class Project extends Operator {
         int tuplesize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tuplesize;
 
-        if (!base.open()) return false;
 
         /** The following loop finds the index of the columns that
          ** are required from the base operator
@@ -83,7 +82,9 @@ public class Project extends Operator {
 
         if (aggregatedIndexes.size() > 0) {
             this.base = new Aggregate(this.base, OpType.AGGREGATE, aggregatedIndexes, aggregatedAttributes);
+            this.base.setSchema(schema);
         }
+        if (!base.open()) return false;
         return true;
     }
 

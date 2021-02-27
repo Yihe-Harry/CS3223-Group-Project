@@ -9,7 +9,7 @@ import qp.utils.Tuple;
 import qp.utils.Attribute;
 
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.LinkedList;
 
 public class Aggregate extends Operator {
     Operator base;      // Base operator
@@ -17,7 +17,7 @@ public class Aggregate extends Operator {
     boolean eos;
 
     // Stored tuples. This is needed because the aggregate operator scans through the entire underlying operator to get the value
-    Deque<Tuple> tuples;
+    LinkedList<Tuple> tuples;
     ArrayList<Integer> aggregateIndexes;
     ArrayList<Integer> aggregateTypes;
     ArrayList<Number> runningAggregates;
@@ -31,6 +31,11 @@ public class Aggregate extends Operator {
                      ArrayList<Integer> aggregateIndexes, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
+        this.tuples = new LinkedList<>();
+        this.aggregateTypes = new ArrayList<>();
+        this.runningAggregates = new ArrayList<>(aggregateIndexes.size());
+        this.aggregateIndexes = new ArrayList<>(aggregateIndexes);
+        this.runningCount = 0;
 
         if (aggregateIndexes.size() != aggregatedAttributes.size()) {
             System.err.println(
@@ -52,9 +57,7 @@ public class Aggregate extends Operator {
                 default:
             }
             this.aggregateTypes.add(curr.getAggType());
-            this.aggregateIndexes = new ArrayList<>(aggregateIndexes);
-            this.runningAggregates = new ArrayList<>(this.aggregateIndexes.size());
-            this.runningCount = 0;
+            this.runningAggregates.add(null);
         }
     }
 
@@ -83,15 +86,22 @@ public class Aggregate extends Operator {
 
         Batch result = new Batch(batchsize);
 
-        while (!result.isFull()) {
+        while (!result.isFull() && !this.tuples.isEmpty()) {
             Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
 
             for (int j = 0; j < tuple.size(); j++) {
                 if (this.aggregateIndexes.contains(j)) {
-                    current.add(this.runningAggregates.get(j));
+                    switch (this.aggregateTypes.get(j)) {
+                        case Attribute.AVG:
+                            current.add((float) this.runningAggregates.get(j) / this.runningCount);
+                        case Attribute.COUNT:
+                            current.add(this.runningCount);
+                        default:
+                            current.add(this.runningAggregates.get(j));
+                    }
                 } else {
-                    Object data = tuple.dataAt(this.aggregateIndexes.get(j));
+                    Object data = tuple.dataAt(j);
                     current.add(data);
                 }
             }
@@ -119,32 +129,37 @@ public class Aggregate extends Operator {
                     int aggregateType = this.aggregateTypes.get(j);
                     int aggregateIndex = this.aggregateIndexes.get(j);
                     Number value = (Number) present.dataAt(aggregateIndex);
-                    Number currentValue = this.runningAggregates.get(j);
+                    Number currentValue = this.runningAggregates.get(aggregateIndex);
 
-                    switch (aggregateType) {
-                        case Attribute.MIN:
-                            if (this.aggregateTypes.get(j) == Attribute.INT) {
-                                this.runningAggregates.set(j, Math.min(value.intValue(), currentValue.intValue()));
-                            } else {
-                                this.runningAggregates.set(j, Math.min(value.floatValue(), currentValue.floatValue()));
-                            }
-                            break;
-                        case Attribute.MAX:
-                            if (this.aggregateTypes.get(j) == Attribute.INT) {
-                                this.runningAggregates.set(j, Math.max(value.intValue(), currentValue.intValue()));
-                            } else {
-                                this.runningAggregates.set(j, Math.max(value.floatValue(), currentValue.floatValue()));
-                            }
-                            break;
-                        case Attribute.AVG:
-                            if (this.aggregateTypes.get(j) == Attribute.INT) {
-                                this.runningAggregates.set(j, currentValue.intValue() + value.intValue());
-                            } else {
-                                this.runningAggregates.set(j, currentValue.floatValue() + value.floatValue());
-                            }
-                            break;
-                        default:
-                            break;
+                    if (currentValue == null) {
+                        this.runningAggregates.set(j, value);
+                    } else {
+
+                        switch (aggregateType) {
+                            case Attribute.MIN:
+                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                    this.runningAggregates.set(j, Math.min(value.intValue(), currentValue.intValue()));
+                                } else {
+                                    this.runningAggregates.set(j, Math.min(value.floatValue(), currentValue.floatValue()));
+                                }
+                                break;
+                            case Attribute.MAX:
+                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                    this.runningAggregates.set(j, Math.max(value.intValue(), currentValue.intValue()));
+                                } else {
+                                    this.runningAggregates.set(j, Math.max(value.floatValue(), currentValue.floatValue()));
+                                }
+                                break;
+                            case Attribute.AVG:
+                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                    this.runningAggregates.set(j, currentValue.intValue() + value.intValue());
+                                } else {
+                                    this.runningAggregates.set(j, currentValue.floatValue() + value.floatValue());
+                                }
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 }
                 this.tuples.add(present);
