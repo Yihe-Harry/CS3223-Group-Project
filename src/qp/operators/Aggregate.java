@@ -16,9 +16,9 @@ public class Aggregate extends Operator {
     int batchsize;      // Number of tuples per outbatch
     boolean eos;
 
-    // Stored tuples. This is needed because the aggregate operator scans through the entire underlying operator to get the value
+    // Stored tuples. This is needed because the aggregate operator scans through the entire
+    // underlying operator to get the value when next() is called.
     LinkedList<Tuple> tuples;
-    ArrayList<Integer> attrIndexes;
     ArrayList<Integer> attrTupleIndex;          // Indexes of aggregated attributes (in tuple)
     ArrayList<Integer> aggregateFunction;       // Aggregate function of attributes
     ArrayList<Integer> projectedAggregateTypes; // Projected aggregate types
@@ -29,16 +29,15 @@ public class Aggregate extends Operator {
     /**
      * constructor
      **/
-    public Aggregate(Operator base, int type, ArrayList<Integer> attrIndexes,
+    public Aggregate(Operator base, int type,
                      ArrayList<Integer> attrTupleIndex, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
 
         this.tuples = new LinkedList<>();
-        this.aggregateFunction = new ArrayList<>();
-        this.projectedAggregateTypes = new ArrayList<>();
-        this.attrIndexes = attrIndexes;
         this.attrTupleIndex = attrTupleIndex;
+        this.aggregateFunction = new ArrayList<>(attrTupleIndex.size());
+        this.projectedAggregateTypes = new ArrayList<>(attrTupleIndex.size());
 
         this.runningAggregates = new ArrayList<>(attrTupleIndex.size());
         this.runningCount = 0;
@@ -81,8 +80,8 @@ public class Aggregate extends Operator {
         // Select number of tuples per batch
         int tupleSize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tupleSize;
-        eos = false;
-        inputCursor = 0;
+        this.eos = false;
+        this.inputCursor = 0;
         return base.open();
     }
 
@@ -94,6 +93,7 @@ public class Aggregate extends Operator {
 
         Batch result = new Batch(batchsize);
 
+        // Add till output batch is full or no more tuples to process
         while (!result.isFull() && !this.tuples.isEmpty()) {
             Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
@@ -101,6 +101,7 @@ public class Aggregate extends Operator {
                 current.add(o);
             }
 
+            // Append aggregated columns to tuples
             for (int i = 0; i < this.projectedAggregateTypes.size(); i++) {
                 int projectedType = this.projectedAggregateTypes.get(i);
 
@@ -143,6 +144,7 @@ public class Aggregate extends Operator {
                 this.runningCount++;
                 Tuple present = inbatch.get(i);
 
+                // Accumulate values for aggregated attributes
                 for (int j = 0; j < this.attrTupleIndex.size(); j++) {
                     int aggregateType = this.aggregateFunction.get(j);
                     if (aggregateType == Attribute.COUNT) {

@@ -1,5 +1,8 @@
 SELECT AVG(CUSTOMER.cid),
+        MAX(CUSTOMER.gender),
         MAX(CUSTOMER.cid),
-        MIN(CUSTOMER.cid),
-        COUNT(CUSTOMER.address)
+        COUNT(CUSTOMER.address),
+        MIN(CUSTOMER.firstname),
+        CUSTOMER.lastname,
+        CUSTOMER.address
 FROM CUSTOMER
