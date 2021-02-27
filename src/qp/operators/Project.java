@@ -66,16 +66,23 @@ public class Project extends Operator {
          **/
         Schema baseSchema = base.getSchema();
         attrIndex = new int[attrset.size()];
+        ArrayList<Integer> aggregatedIndexes = new ArrayList<Integer>();
+        ArrayList<Attribute> aggregatedAttributes = new ArrayList<Attribute>();
+
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
 
-            if (attr.getAggType() != Attribute.NONE) {
-                System.err.println("Aggragation is not implemented.");
-                System.exit(1);
-            }
-
             int index = baseSchema.indexOf(attr.getBaseAttribute());
             attrIndex[i] = index;
+
+            if (attr.getAggType() != Attribute.NONE) {
+                aggregatedIndexes.add(index);
+                aggregatedAttributes.add(attr);
+            }
+        }
+
+        if (aggregatedIndexes.size() > 0) {
+            this.base = new Aggregate(this.base, OpType.AGGREGATE, aggregatedIndexes, aggregatedAttributes);
         }
         return true;
     }

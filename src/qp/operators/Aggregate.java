@@ -8,46 +8,63 @@ import qp.utils.Batch;
 import qp.utils.Tuple;
 import qp.utils.Attribute;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+
 public class Aggregate extends Operator {
+    private class AttributeDetails {
+        public int index, attributeType;
+        public Number runningAttribute;
+        public int count;
+
+        public AttributeDetails(int index, int attributeType) {
+            this.index = index;
+            this.attributeType = attributeType;
+            this.count = 0;
+            this.runningAttribute = null;
+        }
+    }
 
     Operator base;      // Base operator
     int batchsize;      // Number of tuples per outbatch
-
-    int aggregateType;  // Aggregate type
-    Attribute attr;     // Attribute being aggregated
-    int index;          // Index of attribute being aggregated in table
-
-    int runningCount;           // Running count of tuples processed
-    Number runningAggregate;    // Running aggregate value of tuples processed
+    boolean eos;
 
     /**
      * The following fields are required during execution of the aggregate operator
      **/
-    boolean eos;     // Indicate whether end of stream is reached or not
-    Batch inbatch;   // This is the current input buffer
-    Batch outbatch;  // This is the current output buffer
-    int start;       // Cursor position in the input buffer
+    ArrayList<AttributeDetails> attrs;      // Attributes being aggregated
+    ArrayList<Batch> batches;               // Stored batches. This is needed because the aggregate operator scans
+                                            // through the entire underlying operator to get the value
 
     /**
      * constructor
      **/
-    public Aggregate(Operator base, int type, int aggregateType, Attribute attr) throws Exception {
+    public Aggregate(Operator base, int type,
+                     ArrayList<Integer> aggregateIndexes, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
-        this.aggregateType = aggregateType;
-        this.attr = attr;
+        this.attrs = new ArrayList<>();
+
+        if (aggregateIndexes.size() != aggregatedAttributes.size()) {
+            System.err.println(
+                    "Number of aggregate indexes and number of aggregate types different.\n" +
+                            "Check Project.java\n"
+            );
+            System.exit(1);
+        }
 
         // Checks for invalid operator
-        switch (this.aggregateType) {
-            case Attribute.MIN:
-            case Attribute.MAX:
-            case Attribute.AVG:
-                if (attr.getType() == Attribute.STRING) {
-                    throw new Exception("Invalid attribute for given aggregate function");
-                }
-            case Attribute.COUNT:
-            default:
-                return;
+        for (int i = 0; i < aggregateIndexes.size(); i++) {
+            Attribute curr = aggregatedAttributes.get(i);
+            switch (curr.getAggType()) {
+                case Attribute.MIN, Attribute.MAX, Attribute.AVG:
+                    if (curr.getProjectedType() == Attribute.STRING) {
+                        System.err.println("Invalid attribute for given aggregate function");
+                        System.exit(1);
+                    }
+                default:
+            }
+            this.attrs.add(new AttributeDetails(aggregateIndexes.get(i), curr.getAggType()));
         }
     }
 
@@ -61,18 +78,13 @@ public class Aggregate extends Operator {
 
     public boolean open() {
         // Select number of tuples per batch
-        int tuplesize = schema.getTupleSize();
-        batchsize = Batch.getPageSize() / tuplesize;
-
-        this.index = 0;
-        this.runningCount= 0;
-        this.start = 0;
-        this.eos = false;
-        this.index = schema.indexOf(this.attr);
-
+        int tupleSize = schema.getTupleSize();
+        batchsize = Batch.getPageSize() / tupleSize;
+        eos = false;
         return base.open();
     }
-    
+
+    // Scans the entire base operator upon the first call of next, and then releases output in batches
     public Batch next() {
         int i = 0;
         if (eos) {
@@ -80,23 +92,22 @@ public class Aggregate extends Operator {
             return null;
         }
 
-        /** An output buffer is initiated **/
+
+        // An output buffer is initiated
         outbatch = new Batch(batchsize);
 
         // keep on checking the incoming pages until the output buffer is full
         while (!outbatch.isFull()) {
             if (start == 0) {
                 inbatch = base.next();
-                /** There is no more incoming pages from base operator **/
+                // There is no more incoming pages from base operator
                 if (inbatch == null) {
                     eos = true;
                     return outbatch;
                 }
             }
 
-            /** Continue this for loop until this page is fully observed
-             ** or the output buffer is full
-             **/
+            // Continue this for loop until this page is fully observed or the output buffer is full
             for (i = start; i < inbatch.size() && (!outbatch.isFull()); ++i) {
                 Tuple present = inbatch.get(i);
                 this.runningCount++;
@@ -134,9 +145,7 @@ public class Aggregate extends Operator {
                 }
             }
 
-            /** Modify the cursor to the position requierd
-             ** when the base operator is called next time;
-             **/
+            // Modify the cursor to the position required when the base operator is called next time;
             if (i == inbatch.size())
                 start = 0;
             else
@@ -145,23 +154,7 @@ public class Aggregate extends Operator {
         return outbatch;
     }
 
-    public Number getResult() {
-        switch (this.aggregateType) {
-            case Attribute.MAX:
-            case Attribute.MIN:
-            case Attribute.AVG:
-                return this.runningAggregate.floatValue();
-            case Attribute.COUNT:
-                return this.runningAggregate.intValue();
-            default:
-                return -1;
-        }
-    } 
-    
     public boolean close() {
-        if (this.aggregateType == Attribute.AVG) {
-            this.runningAggregate = this.runningAggregate.floatValue() / (float) this.runningCount;
-        }
         base.close();
         return true;
     }
