@@ -18,28 +18,30 @@ public class Aggregate extends Operator {
 
     // Stored tuples. This is needed because the aggregate operator scans through the entire underlying operator to get the value
     LinkedList<Tuple> tuples;
-    ArrayList<Integer> aggregateIndexes;
-    ArrayList<Integer> aggregateFunction;
-    ArrayList<Integer> projectedAggregateTypes;
-    ArrayList<Number> runningAggregates;
+    ArrayList<Integer> attrIndexes;
+    ArrayList<Integer> attrTupleIndex;          // Indexes of aggregated attributes (in tuple)
+    ArrayList<Integer> aggregateFunction;       // Aggregate function of attributes
+    ArrayList<Integer> projectedAggregateTypes; // Projected aggregate types
+    ArrayList<Number> runningAggregates;        // Maintain running aggregates
     int runningCount;
     int inputCursor;
 
     /**
      * constructor
      **/
-    public Aggregate(Operator base, int type,
-                     ArrayList<Integer> aggregateIndexes, ArrayList<Attribute> aggregatedAttributes) {
+    public Aggregate(Operator base, int type, ArrayList<Integer> attrIndexes,
+                     ArrayList<Integer> attrTupleIndex, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
         this.tuples = new LinkedList<>();
         this.aggregateFunction = new ArrayList<>();
-        this.runningAggregates = new ArrayList<>(aggregateIndexes.size());
-        this.aggregateIndexes = new ArrayList<>(aggregateIndexes);
+        this.runningAggregates = new ArrayList<>(attrTupleIndex.size());
+        this.attrIndexes = new ArrayList<>(attrIndexes);
+        this.attrTupleIndex = new ArrayList<>(attrTupleIndex);
         this.projectedAggregateTypes = new ArrayList<>();
         this.runningCount = 0;
 
-        if (aggregateIndexes.size() != aggregatedAttributes.size()) {
+        if (attrTupleIndex.size() != aggregatedAttributes.size()) {
             System.err.println(
                     "Number of aggregate indexes and number of aggregate types different.\n" +
                             "Check Project.java\n"
@@ -48,7 +50,7 @@ public class Aggregate extends Operator {
         }
 
         // Checks for invalid operator
-        for (int i = 0; i < aggregateIndexes.size(); i++) {
+        for (int i = 0; i < attrTupleIndex.size(); i++) {
             Attribute curr = aggregatedAttributes.get(i);
             switch (curr.getAggType()) {
                 // MIN, MAX, AVG are invalid for Strings
@@ -94,10 +96,12 @@ public class Aggregate extends Operator {
             Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
 
-            for (int j = 0; j < tuple.size(); j++) {
-                if (this.aggregateIndexes.contains(j)) {
-                    int projectedType = this.projectedAggregateTypes.get(j);
-                    switch (this.aggregateFunction.get(j)) {
+            while (j < tuples.size()) {
+                if (this.attrIndexes.contains(j)) {
+                    int index = this.attrIndexes.indexOf(j);
+                    int projectedType = this.projectedAggregateTypes.get(index);
+
+                    switch (this.aggregateFunction.get(index)) {
                         case Attribute.AVG:
                             if (projectedType == Attribute.REAL) {
                                 current.add(this.runningAggregates.get(j).floatValue() / this.runningCount);
@@ -140,16 +144,16 @@ public class Aggregate extends Operator {
                 this.runningCount++;
                 Tuple present = inbatch.get(i);
 
-                for (int j = 0; j < this.aggregateIndexes.size(); j++) {
+                for (int j = 0; j < present.size(); j++) {
                     int aggregateType = this.aggregateFunction.get(j);
-                    int aggregateIndex = this.aggregateIndexes.get(j);
+                    int aggregateIndex = this.attrTupleIndex.get(j);
 
                     // If String, must be COUNT function
                     if (this.projectedAggregateTypes.get(j) == Attribute.STRING) {
                         continue;
                     }
                     Number value = (Number) present.dataAt(aggregateIndex);
-                    Number currentValue = this.runningAggregates.get(aggregateIndex);
+                    Number currentValue = this.runningAggregates.get(j);
 
                     if (currentValue == null) {
                         this.runningAggregates.set(j, value);

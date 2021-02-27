@@ -10,6 +10,8 @@ import qp.utils.Schema;
 import qp.utils.Tuple;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class Project extends Operator {
 
@@ -67,8 +69,9 @@ public class Project extends Operator {
          **/
         Schema baseSchema = base.getSchema();
         attrIndex = new int[attrset.size()];
-        ArrayList<Integer> aggregatedIndexes = new ArrayList<>();
+        ArrayList<Integer> attrTupleIndex = new ArrayList<>();
         ArrayList<Attribute> aggregatedAttributes = new ArrayList<>();
+        ArrayList<Integer> attrIndexes = new ArrayList<>();
 
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
@@ -77,21 +80,24 @@ public class Project extends Operator {
             attrIndex[i] = index;
 
             if (attr.getAggType() != Attribute.NONE) {
-                aggregatedIndexes.add(i);
-                aggregatedAttributes.add(attr);
+                attrTupleIndex.add(index);
+                attrIndexes.add(i);
+                Attribute actual = baseSchema.getAttribute(index);
+                aggregatedAttributes.add(actual);
             }
         }
 
-        if (aggregatedIndexes.size() > 0) {
+        if (attrTupleIndex.size() > 0) {
             this.base = new Aggregate(
                     this.base,
                     OpType.AGGREGATE,
-                    aggregatedIndexes,
+                    attrIndexes,
+                    attrTupleIndex,
                     aggregatedAttributes
             );
             this.base.setSchema(schema);
         }
-        if (aggregatedIndexes.size() == attrset.size()) {
+        if (attrTupleIndex.size() == attrset.size()) {
             allAggregate = true;
         }
         if (!base.open()) return false;
