@@ -67,7 +67,9 @@ public class Schema implements Serializable {
         return attr.getType();
     }
 
-    /** Checks whether given attribute is present in this Schema or not **/
+    /**
+     * Checks whether given attribute is present in this Schema or not
+     **/
     public boolean contains(Attribute tarattr) {
         for (int i = 0; i < attset.size(); ++i) {
             Attribute attr = attset.get(i);
@@ -78,8 +80,10 @@ public class Schema implements Serializable {
         return false;
     }
 
-    /** The schema of resultant join operation
-     Not considered the elimination of duplicate column **/
+    /**
+     * The schema of resultant join operation
+     * Not considered the elimination of duplicate column
+     **/
     public Schema joinWith(Schema right) {
         ArrayList<Attribute> newVector = new ArrayList<>(this.attset);
         newVector.addAll(right.getAttList());
@@ -89,8 +93,10 @@ public class Schema implements Serializable {
         return newSchema;
     }
 
-    /** To get schema due to result of project operation
-     attrlist is the attirbuted that are projected **/
+    /**
+     * To get schema due to result of project operation
+     * attrlist is the attirbuted that are projected
+     **/
     public Schema subSchema(ArrayList<Attribute> attrlist) {
         ArrayList<Attribute> newVector = new ArrayList<>();
         int newTupleSize = 0;
@@ -111,7 +117,9 @@ public class Schema implements Serializable {
         return newSchema;
     }
 
-    /** Check compatibility for set operations **/
+    /**
+     * Check compatibility for set operations
+     **/
     public boolean checkCompat(Schema right) {
         ArrayList<Attribute> rightattrlist = right.getAttList();
         if (attset.size() != rightattrlist.size()) {

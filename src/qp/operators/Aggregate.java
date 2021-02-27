@@ -4,9 +4,9 @@
 
 package qp.operators;
 
+import qp.utils.Attribute;
 import qp.utils.Batch;
 import qp.utils.Tuple;
-import qp.utils.Attribute;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
