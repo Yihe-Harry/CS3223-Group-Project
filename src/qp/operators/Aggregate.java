@@ -8,33 +8,21 @@ import qp.utils.Batch;
 import qp.utils.Tuple;
 import qp.utils.Attribute;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Deque;
 
 public class Aggregate extends Operator {
-    private class AttributeDetails {
-        public int index, attributeType;
-        public Number runningAttribute;
-        public int count;
-
-        public AttributeDetails(int index, int attributeType) {
-            this.index = index;
-            this.attributeType = attributeType;
-            this.count = 0;
-            this.runningAttribute = null;
-        }
-    }
-
     Operator base;      // Base operator
     int batchsize;      // Number of tuples per outbatch
     boolean eos;
 
-    /**
-     * The following fields are required during execution of the aggregate operator
-     **/
-    ArrayList<AttributeDetails> attrs;      // Attributes being aggregated
-    ArrayList<Batch> batches;               // Stored batches. This is needed because the aggregate operator scans
-                                            // through the entire underlying operator to get the value
+    // Stored tuples. This is needed because the aggregate operator scans through the entire underlying operator to get the value
+    Deque<Tuple> tuples;
+    ArrayList<Integer> aggregateIndexes;
+    ArrayList<Integer> aggregateTypes;
+    ArrayList<Number> runningAggregates;
+    int runningCount;
+    int inputCursor;
 
     /**
      * constructor
@@ -43,7 +31,6 @@ public class Aggregate extends Operator {
                      ArrayList<Integer> aggregateIndexes, ArrayList<Attribute> aggregatedAttributes) {
         super(type);
         this.base = base;
-        this.attrs = new ArrayList<>();
 
         if (aggregateIndexes.size() != aggregatedAttributes.size()) {
             System.err.println(
@@ -64,7 +51,10 @@ public class Aggregate extends Operator {
                     }
                 default:
             }
-            this.attrs.add(new AttributeDetails(aggregateIndexes.get(i), curr.getAggType()));
+            this.aggregateTypes.add(curr.getAggType());
+            this.aggregateIndexes = new ArrayList<>(aggregateIndexes);
+            this.runningAggregates = new ArrayList<>(this.aggregateIndexes.size());
+            this.runningCount = 0;
         }
     }
 
@@ -81,77 +71,93 @@ public class Aggregate extends Operator {
         int tupleSize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tupleSize;
         eos = false;
+        inputCursor = 0;
         return base.open();
+    }
+
+    private Batch getNextBatch() {
+        if (this.tuples.isEmpty()) {
+            close();
+            return null;
+        }
+
+        Batch result = new Batch(batchsize);
+
+        while (!result.isFull()) {
+            Tuple tuple = this.tuples.removeFirst();
+            ArrayList<Object> current = new ArrayList<>();
+
+            for (int j = 0; j < tuple.size(); j++) {
+                if (this.aggregateIndexes.contains(j)) {
+                    current.add(this.runningAggregates.get(j));
+                } else {
+                    Object data = tuple.dataAt(this.aggregateIndexes.get(j));
+                    current.add(data);
+                }
+            }
+            Tuple outtuple = new Tuple(current);
+            result.add(outtuple);
+        }
+        return result;
     }
 
     // Scans the entire base operator upon the first call of next, and then releases output in batches
     public Batch next() {
         int i = 0;
         if (eos) {
-            close();
-            return null;
+            return getNextBatch();
         }
 
+        Batch inbatch = this.base.next();
 
-        // An output buffer is initiated
-        outbatch = new Batch(batchsize);
-
-        // keep on checking the incoming pages until the output buffer is full
-        while (!outbatch.isFull()) {
-            if (start == 0) {
-                inbatch = base.next();
-                // There is no more incoming pages from base operator
-                if (inbatch == null) {
-                    eos = true;
-                    return outbatch;
-                }
-            }
-
-            // Continue this for loop until this page is fully observed or the output buffer is full
-            for (i = start; i < inbatch.size() && (!outbatch.isFull()); ++i) {
-                Tuple present = inbatch.get(i);
+        while (inbatch != null) {
+            for (i = inputCursor; i < inbatch.size(); ++i) {
                 this.runningCount++;
-                Number value;
-                if (this.attr.getProjectedType() == Attribute.INT) {
-                    value = (int) present.dataAt(this.index);
-                } else {
-                    value = (float) present.dataAt(this.index);
-                }
+                Tuple present = inbatch.get(i);
 
-                switch (this.aggregateType) {
-                    case Attribute.MIN:
-                        if (this.attr.getProjectedType() == Attribute.INT) {
-                            this.runningAggregate = Math.min(value.intValue(), this.runningAggregate.intValue());
-                        } else {
-                            this.runningAggregate = Math.min(value.floatValue(), this.runningAggregate.floatValue());
-                        }
-                        break;
-                    case Attribute.MAX:
-                        if (this.attr.getProjectedType() == Attribute.INT) {
-                            this.runningAggregate = Math.max(value.intValue(), this.runningAggregate.intValue());
-                        } else {
-                            this.runningAggregate = Math.max(value.floatValue(), this.runningAggregate.floatValue());
-                        }
-                        break;
-                    case Attribute.AVG:
-                        if (this.attr.getProjectedType() == Attribute.INT) {
-                            this.runningAggregate = this.runningAggregate.intValue() + value.intValue();
-                        } else {
-                            this.runningAggregate = this.runningAggregate.floatValue() + value.floatValue();
-                        }
-                        break;
-                    default:
-                        break;
+                for (int j = 0; j < this.aggregateIndexes.size(); j++) {
+                    int aggregateType = this.aggregateTypes.get(j);
+                    int aggregateIndex = this.aggregateIndexes.get(j);
+                    Number value = (Number) present.dataAt(aggregateIndex);
+                    Number currentValue = this.runningAggregates.get(j);
+
+                    switch (aggregateType) {
+                        case Attribute.MIN:
+                            if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                this.runningAggregates.set(j, Math.min(value.intValue(), currentValue.intValue()));
+                            } else {
+                                this.runningAggregates.set(j, Math.min(value.floatValue(), currentValue.floatValue()));
+                            }
+                            break;
+                        case Attribute.MAX:
+                            if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                this.runningAggregates.set(j, Math.max(value.intValue(), currentValue.intValue()));
+                            } else {
+                                this.runningAggregates.set(j, Math.max(value.floatValue(), currentValue.floatValue()));
+                            }
+                            break;
+                        case Attribute.AVG:
+                            if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                this.runningAggregates.set(j, currentValue.intValue() + value.intValue());
+                            } else {
+                                this.runningAggregates.set(j, currentValue.floatValue() + value.floatValue());
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                 }
+                this.tuples.add(present);
+                if (i == inbatch.size())
+                    inputCursor = 0;
+                else
+                    inputCursor = i;
             }
-
-            // Modify the cursor to the position required when the base operator is called next time;
-            if (i == inbatch.size())
-                start = 0;
-            else
-                start = i;
+            inbatch = this.base.next();
         }
-        return outbatch;
+
+        eos = true;
+        return getNextBatch();
     }
 
     public boolean close() {

@@ -25,6 +25,8 @@ public class Tuple implements Serializable {
         return _data;
     }
 
+    public int size() { return _data.size(); }
+
     public Object dataAt(int index) {
         return _data.get(index);
     }
