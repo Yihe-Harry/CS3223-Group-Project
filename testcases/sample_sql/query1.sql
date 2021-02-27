@@ -1,3 +1,6 @@
-SELECT MAX(CUSTOMER.cid)
+SELECT AVG(CUSTOMER.cid),
+        MAX(CUSTOMER.cid),
+        MIN(CUSTOMER.cid),
+        CUSTOMER.firstname,
+        CUSTOMER.lastname
 FROM CUSTOMER
-WHERE CUSTOMER.gender = "1"

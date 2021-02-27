@@ -13,9 +13,11 @@ import java.util.ArrayList;
 
 public class Project extends Operator {
 
-    Operator base;                 // Base table to project
-    ArrayList<Attribute> attrset;  // Set of attributes to project
-    int batchsize;                 // Number of tuples per outbatch
+    Operator base;                      // Base table to project
+    ArrayList<Attribute> attrset;       // Set of attributes to project
+    int batchsize;                      // Number of tuples per outbatch
+    boolean allAggregate = false;          // Number of attributes being aggregated
+
 
     /**
      * The following fields are required during execution
@@ -65,8 +67,8 @@ public class Project extends Operator {
          **/
         Schema baseSchema = base.getSchema();
         attrIndex = new int[attrset.size()];
-        ArrayList<Integer> aggregatedIndexes = new ArrayList<Integer>();
-        ArrayList<Attribute> aggregatedAttributes = new ArrayList<Attribute>();
+        ArrayList<Integer> aggregatedIndexes = new ArrayList<>();
+        ArrayList<Attribute> aggregatedAttributes = new ArrayList<>();
 
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
@@ -75,14 +77,22 @@ public class Project extends Operator {
             attrIndex[i] = index;
 
             if (attr.getAggType() != Attribute.NONE) {
-                aggregatedIndexes.add(index);
+                aggregatedIndexes.add(i);
                 aggregatedAttributes.add(attr);
             }
         }
 
         if (aggregatedIndexes.size() > 0) {
-            this.base = new Aggregate(this.base, OpType.AGGREGATE, aggregatedIndexes, aggregatedAttributes);
+            this.base = new Aggregate(
+                    this.base,
+                    OpType.AGGREGATE,
+                    aggregatedIndexes,
+                    aggregatedAttributes
+            );
             this.base.setSchema(schema);
+        }
+        if (aggregatedIndexes.size() == attrset.size()) {
+            allAggregate = true;
         }
         if (!base.open()) return false;
         return true;
@@ -111,6 +121,13 @@ public class Project extends Operator {
             }
             Tuple outtuple = new Tuple(present);
             outbatch.add(outtuple);
+
+            // If number of aggregated attributes == number of all attributes projected
+            // Only need one row
+            if (allAggregate) {
+                close();
+                return outbatch;
+            }
         }
         return outbatch;
     }

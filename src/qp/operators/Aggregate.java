@@ -19,7 +19,8 @@ public class Aggregate extends Operator {
     // Stored tuples. This is needed because the aggregate operator scans through the entire underlying operator to get the value
     LinkedList<Tuple> tuples;
     ArrayList<Integer> aggregateIndexes;
-    ArrayList<Integer> aggregateTypes;
+    ArrayList<Integer> aggregateFunction;
+    ArrayList<Integer> projectedAggregateTypes;
     ArrayList<Number> runningAggregates;
     int runningCount;
     int inputCursor;
@@ -32,9 +33,10 @@ public class Aggregate extends Operator {
         super(type);
         this.base = base;
         this.tuples = new LinkedList<>();
-        this.aggregateTypes = new ArrayList<>();
+        this.aggregateFunction = new ArrayList<>();
         this.runningAggregates = new ArrayList<>(aggregateIndexes.size());
         this.aggregateIndexes = new ArrayList<>(aggregateIndexes);
+        this.projectedAggregateTypes = new ArrayList<>();
         this.runningCount = 0;
 
         if (aggregateIndexes.size() != aggregatedAttributes.size()) {
@@ -49,6 +51,7 @@ public class Aggregate extends Operator {
         for (int i = 0; i < aggregateIndexes.size(); i++) {
             Attribute curr = aggregatedAttributes.get(i);
             switch (curr.getAggType()) {
+                // MIN, MAX, AVG are invalid for Strings
                 case Attribute.MIN, Attribute.MAX, Attribute.AVG:
                     if (curr.getProjectedType() == Attribute.STRING) {
                         System.err.println("Invalid attribute for given aggregate function");
@@ -56,7 +59,8 @@ public class Aggregate extends Operator {
                     }
                 default:
             }
-            this.aggregateTypes.add(curr.getAggType());
+            this.projectedAggregateTypes.add(curr.getProjectedType());
+            this.aggregateFunction.add(curr.getAggType());
             this.runningAggregates.add(null);
         }
     }
@@ -92,13 +96,24 @@ public class Aggregate extends Operator {
 
             for (int j = 0; j < tuple.size(); j++) {
                 if (this.aggregateIndexes.contains(j)) {
-                    switch (this.aggregateTypes.get(j)) {
+                    int projectedType = this.projectedAggregateTypes.get(j);
+                    switch (this.aggregateFunction.get(j)) {
                         case Attribute.AVG:
-                            current.add((float) this.runningAggregates.get(j) / this.runningCount);
+                            if (projectedType == Attribute.REAL) {
+                                current.add(this.runningAggregates.get(j).floatValue() / this.runningCount);
+                            } else if (projectedType == Attribute.INT) {
+                                current.add(this.runningAggregates.get(j).intValue() / this.runningCount);
+                            }
+                            break;
                         case Attribute.COUNT:
                             current.add(this.runningCount);
+                            break;
                         default:
-                            current.add(this.runningAggregates.get(j));
+                            if (projectedType == Attribute.REAL) {
+                                current.add(this.runningAggregates.get(j).floatValue());
+                            } else if (projectedType == Attribute.INT) {
+                                current.add(this.runningAggregates.get(j).intValue());
+                            }
                     }
                 } else {
                     Object data = tuple.dataAt(j);
@@ -126,8 +141,13 @@ public class Aggregate extends Operator {
                 Tuple present = inbatch.get(i);
 
                 for (int j = 0; j < this.aggregateIndexes.size(); j++) {
-                    int aggregateType = this.aggregateTypes.get(j);
+                    int aggregateType = this.aggregateFunction.get(j);
                     int aggregateIndex = this.aggregateIndexes.get(j);
+
+                    // If String, must be COUNT function
+                    if (this.projectedAggregateTypes.get(j) == Attribute.STRING) {
+                        continue;
+                    }
                     Number value = (Number) present.dataAt(aggregateIndex);
                     Number currentValue = this.runningAggregates.get(aggregateIndex);
 
@@ -137,27 +157,25 @@ public class Aggregate extends Operator {
 
                         switch (aggregateType) {
                             case Attribute.MIN:
-                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                if (this.aggregateFunction.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, Math.min(value.intValue(), currentValue.intValue()));
                                 } else {
                                     this.runningAggregates.set(j, Math.min(value.floatValue(), currentValue.floatValue()));
                                 }
                                 break;
                             case Attribute.MAX:
-                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                if (this.aggregateFunction.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, Math.max(value.intValue(), currentValue.intValue()));
                                 } else {
                                     this.runningAggregates.set(j, Math.max(value.floatValue(), currentValue.floatValue()));
                                 }
                                 break;
                             case Attribute.AVG:
-                                if (this.aggregateTypes.get(j) == Attribute.INT) {
+                                if (this.aggregateFunction.get(j) == Attribute.INT) {
                                     this.runningAggregates.set(j, currentValue.intValue() + value.intValue());
                                 } else {
                                     this.runningAggregates.set(j, currentValue.floatValue() + value.floatValue());
                                 }
-                                break;
-                            default:
                                 break;
                         }
                     }
