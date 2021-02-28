@@ -16,8 +16,8 @@ public class Aggregate extends Operator {
     int batchsize;      // Number of tuples per outbatch
     boolean eos;
 
-    // Stored tuples. This is needed because the aggregate operator scans through the entire
-    // underlying operator to get the value when next() is called.
+    // Stored tuples. This is needed because aggregate is a blocking operation.
+    // The aggregate operator scans through the entire underlying operator to get the value when next() is called.
     LinkedList<Tuple> tuples;
     ArrayList<Integer> attrTupleIndex;          // Indexes of aggregated attributes (in tuple)
     ArrayList<Integer> aggregateFunction;       // Aggregate function of attributes
