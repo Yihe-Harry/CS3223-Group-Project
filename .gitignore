@@ -25,3 +25,7 @@ hs_err_pid*
 COMPONENT/out/
 *.out
 COMPONENT/.idea/
+
+*.txt
+*.tbl
+*.stat

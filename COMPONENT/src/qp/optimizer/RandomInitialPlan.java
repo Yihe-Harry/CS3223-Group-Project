@@ -217,7 +217,7 @@ public class RandomInitialPlan {
             }
 
             if (hasAggregate) {
-                root = new Aggregate(base, projectlist, OpType.PROJECT);
+                root = new Aggregate(base, projectlist, OpType.AGGREGATE);
             } else {
                 root = new Project(base, projectlist, OpType.PROJECT);
             }

@@ -19,6 +19,10 @@ Based on the given template, we have implemented the following operators in this
 
 ## Implementation
 
-### Aggregate Operator
+### 5. Aggregate Operator
 
-The Aggregate operation is one that occurs just before the Projection operation. It, similar to sorting, is a blocking one. The pipelined approach does not work here. It scans through all the tuples of the underlying operator, accumulates the running aggregates for each aggregated attribute, and stores them internally. When `next()` is called, a Batch of the stored tuples is then released. 
+The Aggregate operator extends the Projection operator. It, similar to sorting, is a blocking operation. The pipelined approach does not work here. It scans through all the tuples of the underlying operator, accumulates the running aggregates for each aggregated attribute, and stores them internally. When `next()` is called, a Batch of the stored tuples is then released. 
+
+### 6. Bug
+
+When calculating the plan cost of a Join operator, in `PlanCost.getStatistics(Join root)`, the method assumes that the Join condition is an equality condition. It doesn't account for what happens when the condition is actually an inequality, or any other types of conditional. We changed the implementation to consider the number of output tuples when the condition is an inequality, but not when it is a GREATER_THAN, GREATER_THAN_EQUAL, LESS_THAN, LESS_THAN_EQUAL. This is because it is difficult to estimate without the range of values of the attributes. 
