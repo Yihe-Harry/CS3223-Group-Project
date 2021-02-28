@@ -4,8 +4,8 @@
 
 package qp.utils;
 
-import java.util.ArrayList;
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class Batch implements Serializable {
 
@@ -13,23 +13,31 @@ public class Batch implements Serializable {
     static int PageSize;      // Number of bytes per page
     ArrayList<Tuple> tuples;  // The tuples in the page
 
-    /** Set number of bytes per page **/
+    /**
+     * Set number of bytes per page
+     **/
     public static void setPageSize(int size) {
         PageSize = size;
     }
 
-    /** Get number of bytes per page **/
+    /**
+     * Get number of bytes per page
+     **/
     public static int getPageSize() {
         return PageSize;
     }
 
-    /** Number of tuples per page **/
+    /**
+     * Number of tuples per page
+     **/
     public Batch(int numtuple) {
         MAX_SIZE = numtuple;
         tuples = new ArrayList<>(MAX_SIZE);
     }
 
-    /** Insert the record in page at next free location **/
+    /**
+     * Insert the record in page at next free location
+     **/
     public void add(Tuple t) {
         tuples.add(t);
     }

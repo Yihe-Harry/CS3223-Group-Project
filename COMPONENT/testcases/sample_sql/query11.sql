@@ -1,0 +1,1 @@
+SELECT MIN(BILL.amount) FROM BILL

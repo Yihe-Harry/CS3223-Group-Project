@@ -209,7 +209,18 @@ public class RandomInitialPlan {
         if (projectlist == null)
             projectlist = new ArrayList<Attribute>();
         if (!projectlist.isEmpty()) {
-            root = new Project(base, projectlist, OpType.PROJECT);
+            boolean hasAggregate = false;
+            for (Attribute attr: projectlist) {
+                if (attr.getAggType() != Attribute.NONE) {
+                    hasAggregate = true;
+                }
+            }
+
+            if (hasAggregate) {
+                root = new Aggregate(base, projectlist, OpType.PROJECT);
+            } else {
+                root = new Project(base, projectlist, OpType.PROJECT);
+            }
             Schema newSchema = base.getSchema().subSchema(projectlist);
             root.setSchema(newSchema);
         }

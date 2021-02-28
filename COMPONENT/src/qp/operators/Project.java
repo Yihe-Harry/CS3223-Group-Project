@@ -1,5 +1,5 @@
 /**
- * To projec out the required attributes from the result
+ * To project out the required attributes from the result
  **/
 
 package qp.operators;
@@ -68,12 +68,6 @@ public class Project extends Operator {
         attrIndex = new int[attrset.size()];
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
-
-            if (attr.getAggType() != Attribute.NONE) {
-                System.err.println("Aggregation is not implemented.");
-                System.exit(1);
-            }
-
             int index = baseSchema.indexOf(attr.getBaseAttribute());
             attrIndex[i] = index;
         }
