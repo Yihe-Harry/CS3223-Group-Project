@@ -204,6 +204,9 @@ public class RandomInitialPlan {
     }
 
     public void createDistinctOp() {
+        // wrap a Distinct around the root
         root = new Distinct(OpType.DISTINCT, root, BufferManager.numBuffer);
+        // set the schema of the Distinct operator to that of the base
+        root.setSchema(((Distinct) root).getBase().getSchema());
     }
 }

@@ -4,6 +4,7 @@
 
 package qp.optimizer;
 
+import org.w3c.dom.Attr;
 import qp.operators.*;
 import qp.utils.Attribute;
 import qp.utils.Condition;
@@ -239,8 +240,6 @@ public class RandomOptimizer {
         Join op = (Join) findNodeAt(root, joinNum);
         Operator left = op.getLeft();
         Operator right = op.getRight();
-        // TODO DISTINCT cannot be touched because it must be the last operation
-        // also how does the attribute list change
         if (left.getOpType() == OpType.JOIN && right.getOpType() != OpType.JOIN) {
             transformLefttoRight(op, (Join) left);
         } else if (left.getOpType() != OpType.JOIN && right.getOpType() == OpType.JOIN) {
@@ -385,8 +384,12 @@ public class RandomOptimizer {
         } else if (node.getOpType() == OpType.PROJECT) {
             Operator base = ((Project) node).getBase();
             modifySchema(base);
-            ArrayList attrlist = ((Project) node).getProjAttr();
+            ArrayList<Attribute> attrlist = ((Project) node).getProjAttr();
             node.setSchema(base.getSchema().subSchema(attrlist));
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            Operator base = ((Distinct) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
         }
     }
 }

@@ -208,4 +208,18 @@ public class ExternalSort extends Operator {
             }
         }
     }
+
+    @Override
+    public Object clone() {
+        // clone the base
+        Operator base_copy = (Operator) base.clone();
+        // clone the sort conditions
+        List<OrderByClause> sort_cond_copy = new ArrayList<>(sort_cond);
+        // clone this operator
+        ExternalSort this_clone = new ExternalSort(base_copy, sort_cond_copy, buffer_size);
+        // set the schema
+        this_clone.setSchema((Schema) base_copy.getSchema().clone());
+
+        return this_clone;
+    }
 }
