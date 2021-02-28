@@ -73,6 +73,8 @@ public class PlanCost {
         } else if (node.getOpType() == OpType.SELECT) {
             return getStatistics((Select) node);
         } else if (node.getOpType() == OpType.PROJECT) {
+            return getStatistics((Aggregate) node);
+        } else if (node.getOpType() == OpType.PROJECT) {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
@@ -83,9 +85,29 @@ public class PlanCost {
     }
 
     /**
+     * Aggregate, just like Projection, will not change any statistics
+     * However, since it is necessary to read all tuples to calculate aggregates, cost will involve
+     * reading all tuples
+     * @param node
+     * @return number of tuples output
+     */
+    protected long getStatistics(Aggregate node) {
+        long intuples = calculateCost(node.getBase());
+        long tuplesize = node.getSchema().getTupleSize();
+        long outcapacity = Math.max(1, Batch.getPageSize() / tuplesize);
+        long pages = (long) Math.ceil(((double) intuples) / (double) outcapacity);
+        cost += pages;
+
+        // If all attributes are aggregated, then only write out 1 tuple
+        if (node.isAllAggregate()) {
+            return 1;
+        }
+        return intuples;
+    }
+
+    /**
      * Projection will not change any statistics
      * No cost involved as done on the fly
-     * Same for Aggregate
      **/
     protected long getStatistics(Project node) {
         return calculateCost(node.getBase());
