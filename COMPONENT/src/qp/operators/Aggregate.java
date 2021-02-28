@@ -197,11 +197,11 @@ public class Aggregate extends Project {
                     }
                 }
                 this.tuples.add(present);
-                if (i == inbatch.size())
-                    inputCursor = 0;
-                else
-                    inputCursor = i;
             }
+            if (i == inbatch.size())
+                inputCursor = 0;
+            else
+                inputCursor = i;
             inbatch = this.base.next();
         }
 
