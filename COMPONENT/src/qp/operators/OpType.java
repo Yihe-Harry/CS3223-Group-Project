@@ -13,4 +13,6 @@ public class OpType {
     public static final int EXTERNAL_SORT = 4;
     public static final int DISTINCT = 5;
     public static final int ORDER_BY = 6;
+    public static final int AGGREGATE = 7;
+
 }
