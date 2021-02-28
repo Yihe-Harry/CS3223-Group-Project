@@ -6,18 +6,17 @@ package qp.operators;
 
 import qp.utils.Attribute;
 import qp.utils.Batch;
+import qp.utils.Schema;
 import qp.utils.Tuple;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-public class Aggregate extends Operator {
-    Operator base;      // Base operator
-    int batchsize;      // Number of tuples per outbatch
+public class Aggregate extends Project {
     boolean eos;
 
-    // Stored tuples. This is needed because aggregate is a blocking operation.
-    // The aggregate operator scans through the entire underlying operator to get the value when next() is called.
+    // Stored tuples. This is needed because the aggregate operator scans through the entire
+    // underlying operator to get the value when next() is called.
     LinkedList<Tuple> tuples;
     ArrayList<Integer> attrTupleIndex;          // Indexes of aggregated attributes (in tuple)
     ArrayList<Integer> aggregateFunction;       // Aggregate function of attributes
@@ -29,43 +28,14 @@ public class Aggregate extends Operator {
     /**
      * constructor
      **/
-    public Aggregate(Operator base, int type,
-                     ArrayList<Integer> attrTupleIndex, ArrayList<Attribute> aggregatedAttributes) {
-        super(type);
-        this.base = base;
-
+    public Aggregate(Operator base, ArrayList<Attribute> as, int type) {
+        super(base, as, type);
         this.tuples = new LinkedList<>();
-        this.attrTupleIndex = attrTupleIndex;
-        this.aggregateFunction = new ArrayList<>(attrTupleIndex.size());
-        this.projectedAggregateTypes = new ArrayList<>(attrTupleIndex.size());
-
-        this.runningAggregates = new ArrayList<>(attrTupleIndex.size());
+        this.attrTupleIndex = new ArrayList<>();
+        this.aggregateFunction = new ArrayList<>();
+        this.projectedAggregateTypes = new ArrayList<>();
+        this.runningAggregates = new ArrayList<>();
         this.runningCount = 0;
-
-        if (attrTupleIndex.size() != aggregatedAttributes.size()) {
-            System.err.println(
-                    "Number of aggregate indexes and number of aggregate types different.\n" +
-                            "Check Project.java\n"
-            );
-            System.exit(1);
-        }
-
-        // Checks for invalid operator
-        for (int i = 0; i < attrTupleIndex.size(); i++) {
-            Attribute curr = aggregatedAttributes.get(i);
-            switch (curr.getAggType()) {
-                // MIN, MAX, AVG are invalid for Strings
-                case Attribute.MIN, Attribute.MAX, Attribute.AVG:
-                    if (curr.getProjectedType() == Attribute.STRING) {
-                        System.err.println("Invalid attribute for given aggregate function");
-                        System.exit(1);
-                    }
-                default:
-            }
-            this.projectedAggregateTypes.add(curr.getProjectedType());
-            this.aggregateFunction.add(curr.getAggType());
-            this.runningAggregates.add(null);
-        }
     }
 
     public Operator getBase() {
@@ -80,9 +50,28 @@ public class Aggregate extends Operator {
         // Select number of tuples per batch
         int tupleSize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tupleSize;
+        if (!base.open()) return false;
         this.eos = false;
         this.inputCursor = 0;
-        return base.open();
+        Schema baseSchema = base.getSchema();
+        attrIndex = new int[attrset.size()];
+
+        for (int i = 0; i < attrset.size(); i++) {
+            Attribute attr = attrset.get(i);
+
+            int index = baseSchema.indexOf(attr.getBaseAttribute());
+            attrIndex[i] = index;
+
+            // Is an aggregated attribute
+            if (attr.getAggType() != Attribute.NONE) {
+                attr.setType(baseSchema.getAttribute(index).getType());
+                this.projectedAggregateTypes.add(attr.getProjectedType());
+                this.aggregateFunction.add(attr.getAggType());
+                this.runningAggregates.add(null);
+                this.attrTupleIndex.add(index);
+            }
+        }
+        return true;
     }
 
     private Batch getNextBatch() {
@@ -92,40 +81,52 @@ public class Aggregate extends Operator {
         }
 
         Batch result = new Batch(batchsize);
+        int aggregateCount = 0;
 
         // Add till output batch is full or no more tuples to process
         while (!result.isFull() && !this.tuples.isEmpty()) {
             Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
-            for (Object o : tuple.data()) {
-                current.add(o);
-            }
 
-            // Append aggregated columns to tuples
-            for (int i = 0; i < this.projectedAggregateTypes.size(); i++) {
-                int projectedType = this.projectedAggregateTypes.get(i);
+            // Accumulate all attributes into tuple
+            for (int i = 0; i < attrset.size(); i++) {
+                Attribute attr = attrset.get(i);
 
-                switch (this.aggregateFunction.get(i)) {
-                    case Attribute.AVG:
-                        if (projectedType == Attribute.REAL) {
-                            current.add(this.runningAggregates.get(i).floatValue() / this.runningCount);
-                        } else if (projectedType == Attribute.INT) {
-                            current.add(this.runningAggregates.get(i).intValue() / this.runningCount);
-                        }
-                        break;
-                    case Attribute.COUNT:
-                        current.add(this.runningCount);
-                        break;
-                    case Attribute.MIN, Attribute.MAX:
-                        if (projectedType == Attribute.REAL) {
-                            current.add(this.runningAggregates.get(i).floatValue());
-                        } else if (projectedType == Attribute.INT) {
-                            current.add(this.runningAggregates.get(i).intValue());
-                        }
+                if (attr.getAggType() == Attribute.NONE) {
+                    current.add(tuple.dataAt(attrIndex[i]));
+                } else {
+                    int projectedType = this.projectedAggregateTypes.get(aggregateCount);
+
+                    switch (this.aggregateFunction.get(aggregateCount)) {
+                        case Attribute.AVG:
+                            if (projectedType == Attribute.REAL) {
+                                current.add(this.runningAggregates.get(aggregateCount).floatValue() / this.runningCount);
+                            } else if (projectedType == Attribute.INT) {
+                                current.add(this.runningAggregates.get(aggregateCount).intValue() / this.runningCount);
+                            }
+                            break;
+                        case Attribute.COUNT:
+                            current.add(this.runningCount);
+                            break;
+                        case Attribute.MIN, Attribute.MAX:
+                            if (projectedType == Attribute.REAL) {
+                                current.add(this.runningAggregates.get(aggregateCount).floatValue());
+                            } else if (projectedType == Attribute.INT) {
+                                current.add(this.runningAggregates.get(aggregateCount).intValue());
+                            }
+                    }
+                    aggregateCount++;
                 }
             }
+            aggregateCount = 0;
             Tuple outtuple = new Tuple(current);
             result.add(outtuple);
+
+            // If all attributes are aggregated, only need one tuple
+            if (attrset.size() == this.runningAggregates.size()) {
+                close();
+                return result;
+            }
         }
         return result;
     }

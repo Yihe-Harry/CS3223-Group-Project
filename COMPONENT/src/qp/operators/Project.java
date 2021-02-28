@@ -1,5 +1,5 @@
 /**
- * To projec out the required attributes from the result
+ * To project out the required attributes from the result
  **/
 
 package qp.operators;
@@ -10,16 +10,12 @@ import qp.utils.Schema;
 import qp.utils.Tuple;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class Project extends Operator {
 
-    Operator base;                      // Base table to project
-    ArrayList<Attribute> attrset;       // Set of attributes to project
-    int batchsize;                      // Number of tuples per outbatch
-    boolean allAggregate = false;          // Number of attributes being aggregated
-
+    Operator base;                 // Base table to project
+    ArrayList<Attribute> attrset;  // Set of attributes to project
+    int batchsize;                 // Number of tuples per outbatch
 
     /**
      * The following fields are required during execution
@@ -63,44 +59,18 @@ public class Project extends Operator {
         int tuplesize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tuplesize;
 
+        if (!base.open()) return false;
 
         /** The following loop finds the index of the columns that
          ** are required from the base operator
          **/
         Schema baseSchema = base.getSchema();
         attrIndex = new int[attrset.size()];
-        ArrayList<Integer> attrTupleIndex = new ArrayList<>();
-        ArrayList<Attribute> aggregatedAttributes = new ArrayList<>();
-        int numAggregates = 0;                          // For aggregate indexing
-
         for (int i = 0; i < attrset.size(); ++i) {
             Attribute attr = attrset.get(i);
-
             int index = baseSchema.indexOf(attr.getBaseAttribute());
             attrIndex[i] = index;
-
-            if (attr.getAggType() != Attribute.NONE) {
-                attrIndex[i] = baseSchema.getNumCols() + numAggregates;
-                attrTupleIndex.add(index);
-                attr.setType(baseSchema.getAttribute(index).getType());
-                aggregatedAttributes.add(attr);
-                numAggregates++;
-            }
         }
-
-        if (attrTupleIndex.size() > 0) {
-            this.base = new Aggregate(
-                    this.base,
-                    OpType.AGGREGATE,
-                    attrTupleIndex,
-                    aggregatedAttributes
-            );
-            this.base.setSchema(schema);
-        }
-        if (attrTupleIndex.size() == attrset.size()) {
-            allAggregate = true;
-        }
-        if (!base.open()) return false;
         return true;
     }
 
@@ -127,13 +97,6 @@ public class Project extends Operator {
             }
             Tuple outtuple = new Tuple(present);
             outbatch.add(outtuple);
-
-            // If number of aggregated attributes == number of all attributes projected
-            // Only need one row
-            if (allAggregate) {
-                close();
-                return outbatch;
-            }
         }
         return outbatch;
     }

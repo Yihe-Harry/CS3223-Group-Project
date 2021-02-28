@@ -1,7 +1,3 @@
-SELECT AVG(CUSTOMER.cid),
-        MAX(CUSTOMER.gender),
-        MAX(CUSTOMER.cid),
-        COUNT(CUSTOMER.address),
-        CUSTOMER.lastname,
-        CUSTOMER.address
+SELECT MAX(CUSTOMER.cid), AVG(CUSTOMER.cid), MIN(CUSTOMER.cid), CUSTOMER.address, COUNT(CUSTOMER.gender), COUNT(CUSTOMER.firstname)
 FROM CUSTOMER
+WHERE CUSTOMER.gender = "1"
