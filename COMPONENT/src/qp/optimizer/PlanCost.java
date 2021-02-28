@@ -76,6 +76,8 @@ public class PlanCost {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
+        } else if (node.getOpType() == OpType.EXTERNAL_SORT) {
+            // TODO call getStatistics()
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -104,7 +106,7 @@ public class PlanCost {
         Schema leftschema = node.getLeft().getSchema();
         Schema rightschema = node.getRight().getSchema();
 
-        /** Get size of the tuple in output & correspondigly calculate
+        /** Get size of the tuple in output & correspondingly calculate
          ** buffer capacity, i.e., number of tuples per page **/
         long tuplesize = node.getSchema().getTupleSize();
         long outcapacity = Math.max(1, Batch.getPageSize() / tuplesize);
@@ -127,7 +129,7 @@ public class PlanCost {
             /** Number of distinct values of left and right join attribute **/
             long leftattrdistn = ht.get(leftjoinAttr);
             long rightattrdistn = ht.get(rightjoinAttr);
-            tuples /= (double) Math.max(leftattrdistn, rightattrdistn);
+            tuples /= (double) Math.max(leftattrdistn, rightattrdistn); // assuming equality condition
             long mindistinct = Math.min(leftattrdistn, rightattrdistn);
             ht.put(leftjoinAttr, mindistinct);
             ht.put(rightjoinAttr, mindistinct);
@@ -228,7 +230,7 @@ public class PlanCost {
         }
         StringTokenizer tokenizer = new StringTokenizer(line);
         if (tokenizer.countTokens() != 1) {
-            System.out.println("incorrect format of statastics file " + filename);
+            System.out.println("incorrect format of statistics file " + filename);
             System.exit(1);
         }
         String temp = tokenizer.nextToken();
@@ -265,6 +267,18 @@ public class PlanCost {
             System.exit(1);
         }
         return numtuples;
+    }
+
+    /**
+     * Calculates the statistics and cost of doing external sort.
+     *
+     * @param node the operator handling external sort.
+     * @return the number of tuples this node will produce
+     */
+    protected long getStatistics(ExternalSort node) {
+        // TODO implement getStatistics()
+        // TODO implement ORDER BY in parser and scanner
+        return 0L;
     }
 
 }

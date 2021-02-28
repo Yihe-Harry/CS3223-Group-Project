@@ -190,7 +190,7 @@ public class RandomOptimizer {
     }
 
     /**
-     * Selects a random method choice for join wiht number joinNum
+     * Selects a random method choice for join with number joinNum
      * *  e.g., Nested loop join, Sort-Merge Join, Hash Join etc..,
      * * returns the modified plan
      **/
@@ -368,7 +368,7 @@ public class RandomOptimizer {
     }
 
     /**
-     * Modifies the schema of operators which are modified due to selecing an alternative neighbor plan
+     * Modifies the schema of operators which are modified due to selecting an alternative neighbor plan
      **/
     private void modifySchema(Operator node) {
         if (node.getOpType() == OpType.JOIN) {

@@ -33,6 +33,7 @@ public class RandomInitialPlan {
         selectionlist = sqlquery.getSelectionList();
         joinlist = sqlquery.getJoinList();
         groupbylist = sqlquery.getGroupByList();
+        // TODO add an order by list
         numJoin = joinlist.size();
     }
 
@@ -47,7 +48,7 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-
+        // TODO implement distinct, order by, and external sort
         if (sqlquery.isDistinct()) {
             System.err.println("Distinct is not implemented.");
             System.exit(1);
