@@ -97,8 +97,9 @@ public class Distinct extends Operator {
 
     @Override
     public boolean close() {
-        // close the base
+        // close the base and the ExternalSort
         base.close();
+        sorter.close();
         return true;
     }
 
