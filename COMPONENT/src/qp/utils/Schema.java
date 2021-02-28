@@ -90,7 +90,7 @@ public class Schema implements Serializable {
     }
 
     /** To get schema due to result of project operation
-     attrlist is the attirbuted that are projected **/
+     attrlist is the attributes that are projected **/
     public Schema subSchema(ArrayList<Attribute> attrlist) {
         ArrayList<Attribute> newVector = new ArrayList<>();
         int newTupleSize = 0;

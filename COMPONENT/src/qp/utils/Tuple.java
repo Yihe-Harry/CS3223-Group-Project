@@ -88,7 +88,7 @@ public class Tuple implements Serializable {
         } else if (leftdata instanceof Float) {
             return ((Float) leftdata).compareTo((Float) rightdata);
         } else {
-            System.out.println("Tuple: Unknown comparision of the tuples");
+            System.out.println("Tuple: Unknown comparison of the tuples");
             System.exit(1);
             return 0;
         }

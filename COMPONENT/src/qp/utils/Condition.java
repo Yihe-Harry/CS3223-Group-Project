@@ -18,7 +18,7 @@ public class Condition {
 
     Attribute lhs; // Left hand side of the condition
     int optype;    // Operation type
-    int exprtype;  // Comparision type
+    int exprtype;  // Comparison type
     Object rhs;    // Attribute for Join condition and String or Attribute for Select Condition
 
     public Condition(Attribute attr, int type, Object value) {
