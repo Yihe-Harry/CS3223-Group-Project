@@ -71,7 +71,8 @@ public class RandomInitialPlan {
             createJoinOp();
         }
         createProjectOp();
-
+        // check for distinct flag
+        if (sqlquery.isDistinct()) createDistinctOp();
         return root;
     }
 
@@ -200,5 +201,9 @@ public class RandomInitialPlan {
                 entry.setValue(newop);
             }
         }
+    }
+
+    public void createDistinctOp() {
+        root = new Distinct(OpType.DISTINCT, root, BufferManager.numBuffer);
     }
 }
