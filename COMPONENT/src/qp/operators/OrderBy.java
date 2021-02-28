@@ -15,6 +15,13 @@ public class OrderBy extends Operator {
     private final int buffer_size;        // how many buffer pages for sorting
     private final int batch_size;         // number of tuples per batch
 
+    public Operator getBase() {
+        return base;
+    }
+
+    public int getBuffer_size() {
+        return buffer_size;
+    }
 
     public OrderBy(int type, Operator base, int buffer_size, List<OrderByClause> sort_cond) {
         super(type);
