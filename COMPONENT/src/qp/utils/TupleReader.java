@@ -4,10 +4,10 @@
 
 package qp.utils;
 
-import qp.utils.*;
-
-import java.util.*;
-import java.io.*;
+import java.io.EOFException;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 
 public class TupleReader {
 

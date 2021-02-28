@@ -4,8 +4,8 @@
 
 package qp.utils;
 
-import java.util.*;
-import java.io.*;
+import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * Tuple - a simple object which holds an ArrayList of data
@@ -23,6 +23,10 @@ public class Tuple implements Serializable {
      */
     public ArrayList<Object> data() {
         return _data;
+    }
+
+    public int size() {
+        return _data.size();
     }
 
     public Object dataAt(int index) {

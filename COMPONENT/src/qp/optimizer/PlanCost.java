@@ -84,7 +84,8 @@ public class PlanCost {
 
     /**
      * Projection will not change any statistics
-     * * No cost involved as done on the fly
+     * No cost involved as done on the fly
+     * Same for Aggregate
      **/
     protected long getStatistics(Project node) {
         return calculateCost(node.getBase());
