@@ -362,6 +362,8 @@ public class RandomOptimizer {
             return findNodeAt(((Select) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.PROJECT) {
             return findNodeAt(((Project) node).getBase(), joinNum);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return findNodeAt(((Distinct) node).getBase(), joinNum);
         } else {
             return null;
         }
