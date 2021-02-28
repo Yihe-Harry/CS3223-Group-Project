@@ -72,7 +72,7 @@ public class PlanCost {
             return getStatistics((Join) node);
         } else if (node.getOpType() == OpType.SELECT) {
             return getStatistics((Select) node);
-        } else if (node.getOpType() == OpType.PROJECT) {
+        } else if (node.getOpType() == OpType.AGGREGATE) {
             return getStatistics((Aggregate) node);
         } else if (node.getOpType() == OpType.PROJECT) {
             return getStatistics((Project) node);
@@ -88,8 +88,9 @@ public class PlanCost {
      * Aggregate, just like Projection, will not change any statistics
      * However, since it is necessary to read all tuples to calculate aggregates, cost will involve
      * reading all tuples
+     *
      * @param node
-     * @return number of tuples output
+     * @return number of tuples output, which is same as input, unless all attributes are aggregated
      */
     protected long getStatistics(Aggregate node) {
         long intuples = calculateCost(node.getBase());
@@ -137,8 +138,10 @@ public class PlanCost {
         long rightcapacity = Math.max(1, Batch.getPageSize() / righttuplesize);
         long leftpages = (long) Math.ceil(((double) lefttuples) / (double) leftcapacity);
         long rightpages = (long) Math.ceil(((double) righttuples) / (double) rightcapacity);
-
         double tuples = (double) lefttuples * righttuples;
+
+        // For every condition of the join, get the number of distinct values of attributes being joined
+        // Divide tuples by the maximum distinct values of left and right join attributes
         for (Condition con : node.getConditionList()) {
             Attribute leftjoinAttr = con.getLhs();
             Attribute rightjoinAttr = (Attribute) con.getRhs();
@@ -147,13 +150,28 @@ public class PlanCost {
             leftjoinAttr = leftschema.getAttribute(leftattrind);
             rightjoinAttr = rightschema.getAttribute(rightattrind);
 
-            /** Number of distinct values of left and right join attribute **/
+            // Number of distinct values of left and right join attribute
             long leftattrdistn = ht.get(leftjoinAttr);
             long rightattrdistn = ht.get(rightjoinAttr);
-            tuples /= (double) Math.max(leftattrdistn, rightattrdistn);
-            long mindistinct = Math.min(leftattrdistn, rightattrdistn);
-            ht.put(leftjoinAttr, mindistinct);
-            ht.put(rightjoinAttr, mindistinct);
+            double maxdistinct = (double) Math.max(leftattrdistn, rightattrdistn);
+            double mindistinct = (double) Math.min(leftattrdistn, rightattrdistn);
+
+            // Main assumptions:
+            // 1. Uniform distribution of tuple[attribute] across attribute's distinct values
+            // 2. Containment of value sets
+            // 3. Preservation of value sets (num distinct value of other attributes not changed)
+
+            // default using the same as EQUAL for now due to difficulty in estimation of other conditionals
+            switch (con.getExprType()) {
+                case Condition.NOTEQUAL:
+                    tuples = (double) Math.ceil(tuples - (tuples / maxdistinct));
+                case Condition.EQUAL:
+                    tuples = (double) Math.ceil(tuples / maxdistinct);
+                default:
+                    tuples = (double) Math.ceil(tuples / maxdistinct);
+            }
+            ht.put(leftjoinAttr, (long) mindistinct);
+            ht.put(rightjoinAttr, (long) mindistinct);
         }
         long outtuples = (long) Math.ceil(tuples);
 
