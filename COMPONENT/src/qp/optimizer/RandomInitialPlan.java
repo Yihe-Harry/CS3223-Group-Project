@@ -48,7 +48,7 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-        // TODO implement distinct, order by, and external sort
+        // TODO implement distinct, order by
         if (sqlquery.isDistinct()) {
             System.err.println("Distinct is not implemented.");
             System.exit(1);

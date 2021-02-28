@@ -239,7 +239,8 @@ public class RandomOptimizer {
         Join op = (Join) findNodeAt(root, joinNum);
         Operator left = op.getLeft();
         Operator right = op.getRight();
-
+        // TODO DISTINCT cannot be touched because it must be the last operation
+        // also how does the attribute list change
         if (left.getOpType() == OpType.JOIN && right.getOpType() != OpType.JOIN) {
             transformLefttoRight(op, (Join) left);
         } else if (left.getOpType() != OpType.JOIN && right.getOpType() == OpType.JOIN) {

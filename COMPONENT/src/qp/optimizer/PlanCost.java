@@ -76,7 +76,9 @@ public class PlanCost {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
-        } else if (node.getOpType() == OpType.EXTERNAL_SORT) {
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return getStatistics((Distinct) node);
+        } else if (node.getOpType() == OpType.ORDER_BY) {
             // TODO call getStatistics()
         }
         System.out.println("operator is not supported");
@@ -269,17 +271,49 @@ public class PlanCost {
         return numtuples;
     }
 
-    /**
-     * Calculates the statistics and cost of doing external sort.
-     *
-     * @param node the operator handling external sort.
-     * @return the number of tuples this node will produce
+ /**
+     * Calculate number of tuples produced by this operation, as well as Batch I/Os incurred.
+     * @param node the Distinct operator
+     * @return number of tuples produced by this operation
      */
-    protected long getStatistics(ExternalSort node) {
-        // TODO implement getStatistics()
-        // TODO implement ORDER BY in parser and scanner
+    protected long getStatistics(Distinct node) {
+        long intuples = calculateCost(node.getBase());
+        if (!isFeasible) {
+            System.out.println("notFeasible");
+            return Long.MAX_VALUE;
+        }
+
+        // if your schema only has 1 column, calculate how many distinct tuples you will return,
+        // otherwise estimate that you will return all of your incoming tuples
+        Schema schema = node.getSchema();
+        int schema_size = schema.getAttList().size();
+        long outtuples = intuples;
+        if (schema_size == 1) {
+            // get the number of distinct values for that attribute
+            outtuples = ht.get(schema.getAttribute(0));
+        }
+
+        /** calculate I/O cost which will be equal to 2N*log(N/B)/log(B-1) */
+        /* calculate number of pages */
+        long tuplesize = schema.getTupleSize();
+        long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
+        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
+        long B = node.getBuffer_size();
+        cost += 2 * N * (long) Math.ceil(Math.ceil(Math.log((double) N / B)) / Math.log(B - 1));
+        return outtuples;
+    }
+
+    /**
+     * Calculate number of tuples produced by this operation, as well as Batch I/Os incurred.
+     * @param node the Distinct operator
+     * @return number of tuples produced by this operation
+     */
+    protected long getStatistics(OrderBy node) {
         return 0L;
     }
+
+
+
 
 }
 

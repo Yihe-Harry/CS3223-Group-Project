@@ -27,6 +27,14 @@ public class Distinct extends Operator {
         batch_size = Batch.getPageSize() / tuple_size;
     }
 
+    public Operator getBase() {
+        return base;
+    }
+
+    public int getBuffer_size() {
+        return buffer_size;
+    }
+
     @Override
     public boolean open() {
         // create a list of OrderByClauses. The ASC/DESC property is unimportant because you just want
