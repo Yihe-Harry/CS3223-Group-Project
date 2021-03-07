@@ -128,4 +128,19 @@ public class Distinct extends Operator {
 
         return true;
     }
+
+    @Override
+    public Object clone() {
+        // clone the base operator
+        Operator base_copy = (Operator) base.clone();
+
+        // clone this operator
+        Distinct this_copy = new Distinct(OpType.DISTINCT, base_copy, buffer_size);
+
+        // clone the schema
+        this_copy.setSchema((Schema) base_copy.getSchema().clone());
+
+        // return the cloned Distinct
+        return this_copy;
+    }
 }
