@@ -110,7 +110,7 @@ public class ExternalSort extends Operator {
         if (reader != null) {
             try {
                 reader.close();
-                reader = null; // for gc to collect
+                reader = null; // for garbage collector
             } catch (IOException e) {
                 System.out.println("Failed to close the input stream in ExternalSort");
             }
@@ -159,7 +159,6 @@ public class ExternalSort extends Operator {
 
         // read in B pages each time
         for (Batch base_page = base.next(); base_page != null && !base_page.isEmpty(); base_page = base.next()) {
-            Debug.PPrint(base_page);
             // create the buffer
             ArrayList<Batch> buffer_pages = new ArrayList<>();
 
@@ -176,17 +175,21 @@ public class ExternalSort extends Operator {
             ArrayList<Tuple> tuples = new ArrayList<>();
             for (Batch b : buffer_pages) {
                 for (int i = 0; i < b.size(); ++i) {
-                    Debug.PPrint(b.get(i));
+//                    Debug.PPrint(b.get(i));
                     tuples.add(b.get(i));
                 }
             }
 
             // sort all tuples
             tuples.sort(comp);
+//            System.out.println("Printing sorted tuples:");
+//            for (var t : tuples) {
+//                Debug.PPrint(t);
+//            }
 
             // create a temp file name for this sorted run
             String temp_file_name = "External_Sort_" + run_loc.size();
-            System.out.println("External sort line 162: " + temp_file_name);
+//            System.out.println("External sort line 162: " + temp_file_name);
             run_loc.offer(temp_file_name); // External_Sort_0, External_Sort_1 etc without the .tbl extension
 
             // use TupleWriter to flush tuples to the temp file
@@ -228,7 +231,7 @@ public class ExternalSort extends Operator {
 
                 // create a TupleWriter for your merged run
                 String temp_file_name = "External_Sort_" + run_index++;
-                System.out.println("External sort line 200: " + temp_file_name);
+//                System.out.println("External sort line 200: " + temp_file_name);
                 run_loc.offer(temp_file_name); // External_Sort_10, External_Sort_11 without the .tbl extension
                 writer = new TupleWriter(temp_file_name + ".tbl", tuples_per_page);
                 writer.open(); // create the outstream
