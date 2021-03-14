@@ -14,7 +14,8 @@ public class BufferManager {
     public BufferManager(int numBuffer, int numJoin) {
         this.numBuffer = numBuffer;
         this.numJoin = numJoin;
-        buffPerJoin = numBuffer / numJoin;
+        // avoid division by zero error
+        buffPerJoin = numBuffer / Math.max(numJoin, 1);
     }
 
     public static int getBuffersPerJoin() {

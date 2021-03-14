@@ -6,7 +6,7 @@ package qp.operators;
 
 import qp.utils.*;
 
-import java.io.File;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -15,10 +15,10 @@ import java.util.*;
  */
 public class ExternalSort extends Operator {
     private final Operator base;            // base operator
-    private List<OrderByClause> sort_cond;  // list of columns to sort by and whether it's asc or desc.
+    private final List<OrderByClause> sort_cond;  // list of columns to sort by and whether it's asc or desc.
     private final int buffer_size;          // how many buffer pages for sorting
     private TupleWriter writer;             // the writer to write out our output pages
-    private Scan reader;                    // used for intermediate passes and for returning the result
+    private ObjectInputStream reader;          // used for intermediate passes and for returning the result
     private ArrayDeque<String> run_loc;     // temporary files for writing out intermediate sorted runs
     private Comparator<Tuple> comp;         // used for sorting runs
     private final int tuples_per_page;      // number of tuples in a page
@@ -70,11 +70,33 @@ public class ExternalSort extends Operator {
      */
     @Override
     public Batch next() {
-        // use a Scan operator to read in the final sorted run
-        if (reader == null) reader = new Scan(run_loc.peek(), OpType.SCAN);
+        // use an ObjectInputStream to read in the final sorted run
+        if (reader == null) {
+            // initialise the stream
+            String fileName = run_loc.peek() + ".tbl";
+            try {
+                reader = new ObjectInputStream(new FileInputStream(fileName));
+            } catch (IOException io) {
+                System.out.printf("%s:reading the temporary file error", fileName);
+                System.exit(1);
+            }
+        }
 
-        // rely on the Scan's defensive code to read in Batches
-        return reader.next();
+        Batch result = null;
+        try {
+            result = (Batch) reader.readObject();
+        } catch (EOFException e) {
+            // No more batch in the file
+            return null;
+        } catch (ClassNotFoundException c) {
+            System.out.printf("%s:Some error in deserialization\n", run_loc.peek() + ".tbl");
+            System.exit(1);
+        } catch (IOException io) {
+            System.out.printf("%s:temporary file reading error\n", run_loc.peek() + ".tbl");
+            System.exit(1);
+        }
+
+        return result;
     }
 
     /**
@@ -85,18 +107,29 @@ public class ExternalSort extends Operator {
     @Override
     public boolean close() {
         // close the tuple reader
-        if (reader != null) reader.close();
+        if (reader != null) {
+            try {
+                reader.close();
+                reader = null; // for gc to collect
+            } catch (IOException e) {
+                System.out.println("Failed to close the input stream in ExternalSort");
+            }
+        }
 
         // close the tuple writer
-        if (writer != null) writer.close();
+        if (writer != null) {
+            writer.close();
+            writer = null; // for garbage collector
+        }
 
         // delete the file storing the completely sorted run
         if (run_loc != null) {
             try {
-                File f = new File(Objects.requireNonNull(run_loc.poll()));
-                f.delete();
+                File f = new File(run_loc.poll() + ".tbl");
+                if (!f.delete()) System.out.println("Could not delete the last sorted run: " + f.getPath());
+                run_loc = null;
             } catch (Exception e) {
-                System.out.println("Could not delete last sorted run.");
+                e.printStackTrace();
             }
         }
 
@@ -126,6 +159,7 @@ public class ExternalSort extends Operator {
 
         // read in B pages each time
         for (Batch base_page = base.next(); base_page != null && !base_page.isEmpty(); base_page = base.next()) {
+            Debug.PPrint(base_page);
             // create the buffer
             ArrayList<Batch> buffer_pages = new ArrayList<>();
 
@@ -142,6 +176,7 @@ public class ExternalSort extends Operator {
             ArrayList<Tuple> tuples = new ArrayList<>();
             for (Batch b : buffer_pages) {
                 for (int i = 0; i < b.size(); ++i) {
+                    Debug.PPrint(b.get(i));
                     tuples.add(b.get(i));
                 }
             }
@@ -151,6 +186,7 @@ public class ExternalSort extends Operator {
 
             // create a temp file name for this sorted run
             String temp_file_name = "External_Sort_" + run_loc.size();
+            System.out.println("External sort line 162: " + temp_file_name);
             run_loc.offer(temp_file_name); // External_Sort_0, External_Sort_1 etc without the .tbl extension
 
             // use TupleWriter to flush tuples to the temp file
@@ -185,13 +221,17 @@ public class ExternalSort extends Operator {
                 // use a min-heap for k-way merge sort, and use a TupleReader to extract tuples
                 PriorityQueue<TupleReader> min_heap = new PriorityQueue<>((x, y) -> comp.compare(x.peek(), y.peek()));
                 for (int i = 0; i < num_runs; ++i) {
-                    min_heap.offer(new TupleReader(run_loc.poll() + ".tbl", tuples_per_page));
+                    var reader = new TupleReader(run_loc.poll() + ".tbl", tuples_per_page);
+                    reader.open(); // must open for the comparator to use
+                    min_heap.offer(reader);
                 }
 
                 // create a TupleWriter for your merged run
                 String temp_file_name = "External_Sort_" + run_index++;
+                System.out.println("External sort line 200: " + temp_file_name);
                 run_loc.offer(temp_file_name); // External_Sort_10, External_Sort_11 without the .tbl extension
                 writer = new TupleWriter(temp_file_name + ".tbl", tuples_per_page);
+                writer.open(); // create the outstream
 
                 // flush tuples into the TupleWriter
                 while (!min_heap.isEmpty()) {
@@ -201,10 +241,17 @@ public class ExternalSort extends Operator {
 
                     // re-enqueue the reader if it still has tuples
                     if (next.peek() != null) min_heap.offer(next);
+                    else {
+                        // delete the file since you are not using it anymore
+                        File f = new File(next.getFileName());
+                        f.delete();
+                    }
                 }
 
                 // update the number of runs you have left for this pass
                 runs_to_merge -= num_runs;
+                // flush this writer to file
+                writer.close();
             }
         }
     }

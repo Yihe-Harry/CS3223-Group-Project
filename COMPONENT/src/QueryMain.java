@@ -87,22 +87,22 @@ public class QueryMain {
      * As buffer manager is not implemented, just input the number of buffers available.
      **/
     private static void configureBufferManager(int numJoin, String[] args, BufferedReader in) {
-        if (numJoin != 0) {
-            int numBuff = 1000;
-            if (args.length < 4) {
-                System.out.println("enter the number of buffers available");
-                try {
-                    String temp = in.readLine();
-                    numBuff = Integer.parseInt(temp);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } else numBuff = Integer.parseInt(args[3]);
-            BufferManager bm = new BufferManager(numBuff, numJoin);
-        }
+        // note by timothy: I took out the numJoin != 0 check because external sort also relies
+        // on BufferManager to figure out how many in-memory buffers there are.
+        int numBuff = 1000;
+        if (args.length < 4) {
+            System.out.println("enter the number of buffers available");
+            try {
+                String temp = in.readLine();
+                numBuff = Integer.parseInt(temp);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else numBuff = Integer.parseInt(args[3]);
+        BufferManager bm = new BufferManager(numBuff, numJoin);
 
         /** Check the number of buffers available is enough or not **/
-        int numBuff = BufferManager.getBuffersPerJoin();
+        numBuff = BufferManager.getBuffersPerJoin();
         if (numJoin > 0 && numBuff < 3) {
             System.out.println("Minimum 3 buffers are required per join operator ");
             System.exit(1);
@@ -175,6 +175,8 @@ public class QueryMain {
         /** Print each tuple in the result **/
         Batch resultbatch;
         while ((resultbatch = root.next()) != null) {
+            System.out.println("Result batch: ");
+            Debug.PPrint(resultbatch);
             for (int i = 0; i < resultbatch.size(); ++i) {
                 printTuple(resultbatch.get(i));
             }
@@ -214,7 +216,7 @@ public class QueryMain {
             } else if (data == null) {
                 out.print("-NULL-\t");
             } else {
-                out.print(((String) data) + "\t");
+                out.print(data + "\t");
             }
         }
         out.println();

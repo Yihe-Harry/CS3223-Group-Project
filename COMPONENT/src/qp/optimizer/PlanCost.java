@@ -284,8 +284,8 @@ public class PlanCost {
         }
 
         // if your schema only has 1 column, calculate how many distinct tuples you will return,
-        // otherwise estimate that you will return all of your incoming tuples. Either way,
-        // there is no change to your
+        // otherwise estimate that you will return all of your incoming tuples, because of the independence
+        // assumption
         Schema schema = node.getSchema();
         int schema_size = schema.getAttList().size();
         long outtuples = intuples;
@@ -299,7 +299,7 @@ public class PlanCost {
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
         long N = (long) Math.ceil((double) outtuples / (double) pagesize);
         long B = node.getBuffer_size();
-        cost += 2 * N * (long) Math.ceil(Math.ceil(Math.log((double) N / B)) / Math.log(B - 1));
+        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
         return outtuples;
     }
 

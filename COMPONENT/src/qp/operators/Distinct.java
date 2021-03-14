@@ -10,7 +10,7 @@ import java.util.Objects;
  * Utilises external sort to remove duplicate tuples.
  */
 public class Distinct extends Operator {
-    private final Operator base;            // the base operator
+    private Operator base;            // the base operator
     private ExternalSort sorter = null;     // the operator to sort our tuples
     private final int buffer_size;          // how many buffer pages for sorting
     private final int batch_size;           // number of tuples per batch
@@ -18,6 +18,7 @@ public class Distinct extends Operator {
     private Batch inbatch;                  // buffer to hold un-flushed tuples
     private int start;                      // cursor position in the input buffer
     boolean eos;                            // checks if the underlying stream has been exhausted
+    Tuple prev = null;                      // used for comparisons
 
     public Distinct(int type, Operator base, int buffer_size) {
         super(type);
@@ -29,6 +30,10 @@ public class Distinct extends Operator {
 
     public Operator getBase() {
         return base;
+    }
+
+    public void setBase(Operator base) {
+        this.base = base;
     }
 
     public int getBuffer_size() {
@@ -47,12 +52,16 @@ public class Distinct extends Operator {
 
         // initialise the ExternalSort
         sorter = new ExternalSort(base, sort_cond, buffer_size);
+
+        // set the sorter's schema
+        sorter.setSchema(base.getSchema());
+
         eos = false;
         start = 0;
 
 
         // try opening the sorter
-        return sorter.open();
+        return sorter.open(); // after this call, Distinct needs to use sorter to pull out pages
     }
 
     /**
@@ -62,8 +71,7 @@ public class Distinct extends Operator {
     @Override
     public Batch next() {
         // check if end-of-stream has been reached
-        if (eos) {
-            close();
+        if (eos) { // don't close because QueryMain calls close
             return null;
         }
 
@@ -74,20 +82,19 @@ public class Distinct extends Operator {
         int i = 0;
         while (!result.isFull()) {
             if (start == 0) {
-                inbatch = base.next();
+                inbatch = sorter.next();
                 // if inbatch is null, the underlying stream has been exhausted
                 if (inbatch == null) {
                     eos = true;
-                    return null; // here I deviate from Select because no point returning empty page
+                    return result;
                 }
             }
 
             // read in pages until either result is full or this page is fully checked
-            Tuple previous = null;
             for (i = start; i < inbatch.size() && !result.isFull(); ++i) {
                 Tuple present = inbatch.get(i);
-                if (!isSame(previous, present)) {
-                    previous = present;
+                if (!isSame(prev, present)) {
+                    prev = present;
                     result.add(present);
                 }
             }
