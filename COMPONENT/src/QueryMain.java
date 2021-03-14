@@ -177,7 +177,7 @@ public class QueryMain {
         while ((resultbatch = root.next()) != null) {
 //            System.out.println("Result batch: ");
 //            Debug.PPrint(resultbatch);
-            for (int i = 0; i 1< resultbatch.size(); ++i) {
+            for (int i = 0; i < resultbatch.size(); ++i) {
                 printTuple(resultbatch.get(i));
             }
         }
