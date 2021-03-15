@@ -143,7 +143,7 @@ public class RandomDB {
                     } else if (datatype[j].equals("TIME")) {
                         // hour, minute, second - second must be at least 1
                         // otherwise the toString() cuts off the seconds and
-                        // messes up the parser
+                        // just prints out the hour and minute
                         LocalTime time = LocalTime.of(
                                 random.nextInt(24),
                                 random.nextInt(60),
