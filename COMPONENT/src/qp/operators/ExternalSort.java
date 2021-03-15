@@ -22,7 +22,8 @@ public class ExternalSort extends Operator {
     private ArrayDeque<String> run_loc;     // temporary files for writing out intermediate sorted runs
     private Comparator<Tuple> comp;         // used for sorting runs
     private final int tuples_per_page;      // number of tuples in a page
-
+    private static int sorter_count = 0;    // index number generator
+    private final int sorter_index;         // index number for this sorter
     /**
      * Initialises operator for multi-way merge-sort.
      *
@@ -41,6 +42,7 @@ public class ExternalSort extends Operator {
         this.sort_cond = sort_cond;
         this.run_loc = new ArrayDeque<>();
         this.tuples_per_page = Batch.getPageSize() / base.getSchema().getTupleSize();
+        this.sorter_index = sorter_count++;
     }
 
     /**
@@ -188,9 +190,9 @@ public class ExternalSort extends Operator {
 //            }
 
             // create a temp file name for this sorted run
-            String temp_file_name = "External_Sort_" + run_loc.size();
+            String temp_file_name = "External_Sort_" + sorter_index + "_" + run_loc.size();
 //            System.out.println("External sort line 162: " + temp_file_name);
-            run_loc.offer(temp_file_name); // External_Sort_0, External_Sort_1 etc without the .tbl extension
+            run_loc.offer(temp_file_name); // External_Sort_0_0, External_Sort_0_1 etc without the .tbl extension
 
             // use TupleWriter to flush tuples to the temp file
             writer = new TupleWriter(temp_file_name + ".tbl", tuples_per_page);
@@ -230,9 +232,9 @@ public class ExternalSort extends Operator {
                 }
 
                 // create a TupleWriter for your merged run
-                String temp_file_name = "External_Sort_" + run_index++;
+                String temp_file_name = "External_Sort_" + sorter_index + "_" + run_index++;
 //                System.out.println("External sort line 200: " + temp_file_name);
-                run_loc.offer(temp_file_name); // External_Sort_10, External_Sort_11 without the .tbl extension
+                run_loc.offer(temp_file_name); // External_Sort_0_10, External_Sort_0_11 without the .tbl extension
                 writer = new TupleWriter(temp_file_name + ".tbl", tuples_per_page);
                 writer.open(); // create the outstream
 
