@@ -27,12 +27,21 @@ ID={ALPHA}({ALPHA_NUMERIC})*
 CHAR=([\040-\041]|[\043-\046]|[\050-\133]|[\135-\176]|\\\\|\\'|\\\"|"\t"|"\n")
 CHAR_LITERAL='{CHAR}'
 STRING_LITERAL=\"{CHAR}*\"
-
+TIME={DIGIT}{DIGIT}[-]{DIGIT}{DIGIT}[-]{DIGIT}{DIGIT}
 
  
 %%
 
 
+<YYINITIAL,NEGATE> DESC {
+  yybegin(YYINITIAL);
+  return new Symbol(sym.DESC,yyline,yychar,new TokenValue(yytext()));
+}
+
+<YYINITIAL,NEGATE> ASC {
+  yybegin(YYINITIAL);
+  return new Symbol(sym.ASC,yyline,yychar,new TokenValue(yytext()));
+}
 
 <YYINITIAL,NEGATE> SELECT {
   yybegin(YYINITIAL);
@@ -108,6 +117,11 @@ STRING_LITERAL=\"{CHAR}*\"
   return new Symbol(sym.STRINGLIT,yyline,yychar, new TokenValue(yytext().substring(1,yytext().length()-1))); 
 }
 
+<YYINITIAL,NEGATE> {TIME} {
+  yybegin(YYINITIAL);
+  return new Symbol(sym.TIME,yyline,yychar, new TokenValue(yytext()));
+}
+
 <YYINITIAL,NEGATE> "," {
   yybegin(NEGATE); 
   return new Symbol(sym.COMMA, yyline,yychar,new TokenValue(yytext())); 
@@ -157,9 +171,6 @@ STRING_LITERAL=\"{CHAR}*\"
   yybegin(YYINITIAL);
   return new Symbol(sym.DOT,yyline,yychar,new TokenValue(yytext()));
 }
-
-
-
 
 
 

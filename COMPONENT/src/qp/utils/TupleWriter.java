@@ -64,7 +64,7 @@ public class TupleWriter {
         outBatch.add(nextTuple);
         ++numTuple;
         if (outBatch.isFull())
-            writeBatch();        // Immediately writes to file when we have enough tuples to fill a BAtch
+            writeBatch();        // Immediately writes to file when we have enough tuples to fill a batch
         return true;
     }
 

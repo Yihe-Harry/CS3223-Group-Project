@@ -4,7 +4,10 @@
 
 package qp.operators;
 
+import org.w3c.dom.Attr;
 import qp.utils.*;
+
+import java.time.LocalTime;
 
 public class Select extends Operator {
 
@@ -135,12 +138,12 @@ public class Select extends Operator {
         int exprtype = con.getExprType();
 
         if (datatype == Attribute.INT) {
-            int srcVal = ((Integer) srcValue).intValue();
+            int srcVal = (Integer) srcValue;
             int checkVal = 0;
             if (con.getRhs() instanceof String) {
                 checkVal = Integer.parseInt((String) con.getRhs());
             } else if (con.getRhs() instanceof Attribute) {
-                checkVal = ((Integer) tuple.dataAt(schema.indexOf((Attribute) con.getRhs()))).intValue();
+                checkVal = (Integer) tuple.dataAt(schema.indexOf((Attribute) con.getRhs()));
             } else {
                 System.out.println("Select: Malformed condition");
             }
@@ -212,6 +215,31 @@ public class Select extends Operator {
                 if (srcVal == checkVal) return true;
             } else if (exprtype == Condition.NOTEQUAL) {
                 if (srcVal != checkVal) return true;
+            } else {
+                System.out.println("Select: Incorrect condition operator");
+            }
+        } else if (datatype == Attribute.TIME) {
+            LocalTime srcVal = (LocalTime) srcValue;
+            int flag = 0;
+            if (con.getRhs() instanceof String) {
+                flag = srcVal.compareTo(LocalTime.parse((String) con.getRhs()));
+            } else if (con.getRhs() instanceof Attribute) {
+                flag = srcVal.compareTo(((LocalTime) tuple.dataAt(schema.indexOf((Attribute) con.getRhs()))));
+            } else {
+                System.out.println("Select: Malformed condition");
+            }
+            if (exprtype == Condition.LESSTHAN) {
+                if (flag < 0) return true;
+            } else if (exprtype == Condition.GREATERTHAN) {
+                if (flag > 0) return true;
+            } else if (exprtype == Condition.LTOE) {
+                if (flag <= 0) return true;
+            } else if (exprtype == Condition.GTOE) {
+                if (flag >= 0) return true;
+            } else if (exprtype == Condition.EQUAL) {
+                if (flag == 0) return true;
+            } else if (exprtype == Condition.NOTEQUAL) {
+                if (flag != 0) return true;
             } else {
                 System.out.println("Select: Incorrect condition operator");
             }

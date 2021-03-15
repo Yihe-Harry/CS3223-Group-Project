@@ -5,6 +5,7 @@
 package qp.utils;
 
 import java.io.Serializable;
+import java.time.LocalTime;
 import java.util.ArrayList;
 
 /**
@@ -91,8 +92,10 @@ public class Tuple implements Serializable {
             return ((String) leftdata).compareTo((String) rightdata);
         } else if (leftdata instanceof Float) {
             return ((Float) leftdata).compareTo((Float) rightdata);
+        } else if (leftdata instanceof LocalTime) {
+            return ((LocalTime) leftdata).compareTo((LocalTime) rightdata);
         } else {
-            System.out.println("Tuple: Unknown comparision of the tuples");
+            System.out.println("Tuple: Unknown comparison of the tuples");
             System.exit(1);
             return 0;
         }
@@ -117,6 +120,8 @@ public class Tuple implements Serializable {
                 return ((String) leftdata).compareTo((String) rightdata);
             } else if (leftdata instanceof Float) {
                 return ((Float) leftdata).compareTo((Float) rightdata);
+            } else if (leftdata instanceof LocalTime) {
+                return ((LocalTime) leftdata).compareTo((LocalTime) rightdata);
             } else {
                 System.out.println("Tuple: Unknown comparision of the tuples");
                 System.exit(1);

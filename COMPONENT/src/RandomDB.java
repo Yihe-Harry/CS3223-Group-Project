@@ -2,6 +2,7 @@ import qp.utils.Attribute;
 import qp.utils.Schema;
 
 import java.io.*;
+import java.time.LocalTime;
 import java.util.*;
 
 public class RandomDB {
@@ -77,6 +78,8 @@ public class RandomDB {
                     // System.out.println("String");
                 } else if (datatype[i].equals("REAL")) {
                     type = Attribute.REAL;
+                } else if (datatype[i].equals("TIME")) {
+                    type = Attribute.TIME;
                 } else {
                     type = -1;
                     System.err.println("invalid data type");
@@ -113,7 +116,7 @@ public class RandomDB {
             schema.setTupleSize(size);
             outmd.writeObject(schema);
             outmd.close();
-
+            HashSet<Integer> time_set = new HashSet<>();
             for (i = 0; i < numtuple; ++i) {
                 for (int j = 0; j < numCol; ++j) {
                     if (datatype[j].equals("STRING")) {
@@ -137,6 +140,16 @@ public class RandomDB {
                                 fk.get(j).add(value);
                             }
                         }
+                    } else if (datatype[j].equals("TIME")) {
+                        // hour, minute, second - second must be at least 1
+                        // otherwise the toString() cuts off the seconds and
+                        // just prints out the hour and minute
+                        LocalTime time = LocalTime.of(
+                                random.nextInt(24),
+                                random.nextInt(60),
+                                1 + random.nextInt(59));
+                        time_set.add(time.hashCode());
+                        outtbl.print(time + "\t");
                     }
                 }
                 if (i != numtuple - 1)
@@ -165,6 +178,8 @@ public class RandomDB {
                         else
                             outstat.print(range[i] + "\t");
                     }
+                } else if (datatype[i].equals("TIME")) {
+                    outstat.print(time_set.size() + "\t");
                 }
             }
             outstat.close();

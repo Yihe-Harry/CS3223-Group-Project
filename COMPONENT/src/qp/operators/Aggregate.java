@@ -24,6 +24,7 @@ public class Aggregate extends Project {
     ArrayList<Number> runningAggregates;        // Maintain running aggregates
     int runningCount;
     int inputCursor;
+    boolean allAggregate = true;                       // Boolean if all attributes are aggregated
 
     /**
      * constructor
@@ -36,6 +37,17 @@ public class Aggregate extends Project {
         this.projectedAggregateTypes = new ArrayList<>();
         this.runningAggregates = new ArrayList<>();
         this.runningCount = 0;
+
+        for (Attribute attr: attrset) {
+            if (attr.getAggType() == Attribute.NONE) {
+                allAggregate = false;
+                break;
+            }
+        }
+    }
+
+    public boolean isAllAggregate() {
+        return allAggregate;
     }
 
     public Operator getBase() {
@@ -124,7 +136,7 @@ public class Aggregate extends Project {
             result.add(outtuple);
 
             // If all attributes are aggregated, only need one tuple
-            if (attrset.size() == this.runningAggregates.size()) {
+            if (allAggregate) {
                 close();
                 return result;
             }
@@ -186,11 +198,11 @@ public class Aggregate extends Project {
                     }
                 }
                 this.tuples.add(present);
-                if (i == inbatch.size())
-                    inputCursor = 0;
-                else
-                    inputCursor = i;
             }
+            if (i == inbatch.size())
+                inputCursor = 0;
+            else
+                inputCursor = i;
             inbatch = this.base.next();
         }
 

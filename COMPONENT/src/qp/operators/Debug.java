@@ -6,6 +6,8 @@ package qp.operators;
 
 import qp.utils.*;
 
+import java.time.LocalTime;
+
 public class Debug {
 
     /**
@@ -117,6 +119,14 @@ public class Debug {
 
         } else if (optype == OpType.SCAN) {
             System.out.print(((Scan) node).getTabName());
+        } else if (optype == OpType.DISTINCT) {
+            System.out.print("Distinct(");
+            PPrint(((Distinct) node).getBase());
+            System.out.print(")");
+        } else if (optype == OpType.ORDER_BY) {
+            System.out.print("ORDER_BY(");
+            PPrint(((OrderBy) node).getBase());
+            System.out.print(")");
         }
     }
 
@@ -131,8 +141,10 @@ public class Debug {
                 System.out.print((Integer) data + "\t");
             } else if (data instanceof Float) {
                 System.out.print((Float) data + "\t");
-            } else {
+            } else if (data instanceof String) {
                 System.out.print(((String) data) + "\t");
+            } else if (data instanceof LocalTime) {
+                System.out.print(data + "\t");
             }
         }
         System.out.println();
