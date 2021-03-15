@@ -16,8 +16,13 @@ This repository presents our approach to this project. We are a team consisting 
 
 Based on the given template, we have implemented the following operators in this SPJ query engine:
 - `AGGREGATE` operator (see [Aggregate.java](src/qp/operators/Aggregate.java))
+- `ExternalSort` operator
+- `Distinct` operator
+- `Orderby` operator
 
 ## Implementation
+
+___
 
 ### 5. Aggregate Operator
 
@@ -26,3 +31,38 @@ The Aggregate operator extends the Projection operator. It, similar to sorting, 
 ### 6. Bug
 
 When calculating the plan cost of a Join operator, in `PlanCost.getStatistics(Join root)`, the method assumes that the Join condition is an equality condition. It doesn't account for what happens when the condition is actually an inequality, or any other types of conditional. We changed the implementation to consider the number of output tuples when the condition is an inequality, but not when it is a GREATER_THAN, GREATER_THAN_EQUAL, LESS_THAN, LESS_THAN_EQUAL. This is because it is difficult to estimate without the range of values of the attributes. 
+
+### 7. ExternalSort operator
+
+This operator uses the two-phase merge sort approach. It generates sorted runs in the first pass where the size of each run depends on how many buffer pages are available. Then it merges as many runs as possible in each pass until there is only one final run. The sorting is performed during `open()`. This means that external sort cannot support pipelining. When `next()`  is called, this operator then reads in the final sorted run batch by batch.
+
+`ExternalSort` takes in a list of `OrderByClause` objects in its constructor, which just contains an `Attribute` object and a sort direction `ASC/DESC`. Our SPJ parser only supports sorting all attributes in one direction (all ascending or all descending). It then compares tuples in the order of the `OrderByClauses` - for example, if you order by attribute `B` before `A`, then the tuples will be sorted by `B` first then `A`.
+
+### 8. Distinct operator
+
+This operator utilises external sort to group identical tuples together, and then eliminates adjacent copies of tuples. 
+
+### 9. OrderBy operator
+
+This operator utilises ExternalSort to order tuples. When typing queries, make sure to put ASC or DESC on a newline.
+
+> `SELECT *
+> FROM Tbl
+> ORDERBY A`
+
+This will order by `A` ascending.
+
+> `SELECT *
+> FROM Tbl
+> ORDERBY A
+> ASC`
+
+This will order by `A` ascending.
+
+> `SELECT *
+> FROM Tbl
+> ORDERBY A,B
+> DESC`
+
+This will order by `A` descending first, then `B` descending.
+
