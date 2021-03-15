@@ -27,7 +27,7 @@ ID={ALPHA}({ALPHA_NUMERIC})*
 CHAR=([\040-\041]|[\043-\046]|[\050-\133]|[\135-\176]|\\\\|\\'|\\\"|"\t"|"\n")
 CHAR_LITERAL='{CHAR}'
 STRING_LITERAL=\"{CHAR}*\"
-
+TIME={DIGIT}{DIGIT}[-]{DIGIT}{DIGIT}[-]{DIGIT}{DIGIT}
 
  
 %%
@@ -115,6 +115,11 @@ STRING_LITERAL=\"{CHAR}*\"
 <YYINITIAL,NEGATE> {STRING_LITERAL} { 
   yybegin(YYINITIAL); 
   return new Symbol(sym.STRINGLIT,yyline,yychar, new TokenValue(yytext().substring(1,yytext().length()-1))); 
+}
+
+<YYINITIAL,NEGATE> {TIME} {
+  yybegin(YYINITIAL);
+  return new Symbol(sym.TIME,yyline,yychar, new TokenValue(yytext()));
 }
 
 <YYINITIAL,NEGATE> "," {

@@ -46,7 +46,7 @@ public class Operator {
     public boolean close() {
         return true;
     }
-    // TODO override clone for all my new operators
+
     public Object clone() {
         return new Operator(optype);
     }

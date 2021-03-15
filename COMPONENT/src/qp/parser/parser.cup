@@ -38,6 +38,7 @@ terminal COMMA,LEFTBRACKET,RIGHTBRACKET,DOT,STAR;
 terminal LESSTHAN,GREATERTHAN,LTOE,GTOE,EQUAL,NOTEQUAL;
 terminal SELECT,FROM,WHERE,GROUPBY,ORDERBY,MAX,MIN,SUM,COUNT,AVG,DISTINCT,DESC,ASC;
 terminal TokenValue STRINGLIT;
+terminal TokenValue TIME;
 
 /* Non terminals */
 nonterminal SQLQuery finalquery;
@@ -201,6 +202,12 @@ condition ::= attribute:at op:o STRINGLIT:s
 			Condition c = new Condition(at,o.getExprType(),s.text());
 			c.setOpType(Condition.SELECT);
 			RESULT = c;
+		:}
+		| attribute:at op:o TIME:t
+		{:
+            Condition c = new Condition(at, o.getExprType(), t.text());
+            c.setOpType(Condition.SELECT);
+            RESULT = c;
 		:}
 		| attribute:a1 op:o attribute:a2
 		{:

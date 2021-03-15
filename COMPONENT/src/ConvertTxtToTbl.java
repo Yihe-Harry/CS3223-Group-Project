@@ -10,6 +10,7 @@ import qp.utils.Schema;
 import qp.utils.Tuple;
 
 import java.io.*;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
@@ -59,6 +60,8 @@ public class ConvertTxtToTbl {
                     data.add(Float.valueOf(dataElement));
                 } else if (datatype == Attribute.STRING) {
                     data.add(dataElement);
+                } else if (datatype == Attribute.TIME) {
+                    data.add(LocalTime.parse(dataElement));
                 } else {
                     System.err.println("Invalid data type");
                     System.exit(1);

@@ -6,6 +6,8 @@ package qp.operators;
 
 import qp.utils.*;
 
+import java.time.LocalTime;
+
 public class Debug {
 
     /**
@@ -139,8 +141,10 @@ public class Debug {
                 System.out.print((Integer) data + "\t");
             } else if (data instanceof Float) {
                 System.out.print((Float) data + "\t");
-            } else {
+            } else if (data instanceof String) {
                 System.out.print(((String) data) + "\t");
+            } else if (data instanceof LocalTime) {
+                System.out.print(data + "\t");
             }
         }
         System.out.println();
