@@ -22,8 +22,6 @@ Based on the given template, we have implemented the following operators in this
 
 ## Implementation
 
-___
-
 ### 5. Aggregate Operator
 
 The Aggregate operator extends the Projection operator. It, similar to sorting, is a blocking operation. The pipelined approach does not work here. It scans through all the tuples of the underlying operator, accumulates the running aggregates for each aggregated attribute, and stores them internally. When `next()` is called, a Batch of the stored tuples is then released. 
@@ -46,23 +44,37 @@ This operator utilises external sort to group identical tuples together, and the
 
 This operator utilises ExternalSort to order tuples. When typing queries, make sure to put ASC or DESC on a newline.
 
-> `SELECT *
-> FROM Tbl
+> `SELECT *`
+>
+> `FROM Tbl`
+>
+> `
 > ORDERBY A`
 
 This will order by `A` ascending.
 
-> `SELECT *
-> FROM Tbl
-> ORDERBY A
-> ASC`
+> `SELECT *`
+>
+> `FROM Tbl
+> `
+>
+> `ORDERBY A
+> `
+>
+> `ASC`
 
 This will order by `A` ascending.
 
-> `SELECT *
+> `SELECT *`
+>
+> `
 > FROM Tbl
-> ORDERBY A,B
-> DESC`
+> `
+>
+> `ORDERBY A,B
+> `
+>
+> `DESC`
 
 This will order by `A` descending first, then `B` descending.
 
