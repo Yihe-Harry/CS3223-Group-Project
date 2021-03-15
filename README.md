@@ -100,4 +100,4 @@ This will order by `A` descending first, then `B` descending.
 
 The TIME data format is represented as a LocalTime object. The datatype is `TIME`, the range value is 
 not used (but you have to put some number, e.g. `1`), and the number of bytes used is `95` (derived by counting the size
-of LocalTime's data fields). You can use `ORDERBY` on dates.
+of LocalTime's data fields). You can use `ORDERBY` on dates. The format of `TIME` is `HH:MM:SS` 
