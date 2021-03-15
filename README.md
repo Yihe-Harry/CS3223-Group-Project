@@ -19,28 +19,29 @@ Based on the given template, we have implemented the following operators in this
 - `ExternalSort` operator
 - `Distinct` operator
 - `Orderby` operator
+- `TIME` data format
 
 ## Implementation
 
-### 5. Aggregate Operator
+### 1. Aggregate Operator
 
 The Aggregate operator extends the Projection operator. It, similar to sorting, is a blocking operation. The pipelined approach does not work here. It scans through all the tuples of the underlying operator, accumulates the running aggregates for each aggregated attribute, and stores them internally. When `next()` is called, a Batch of the stored tuples is then released. 
 
-### 6. Bug
+### 2. Bug
 
 When calculating the plan cost of a Join operator, in `PlanCost.getStatistics(Join root)`, the method assumes that the Join condition is an equality condition. It doesn't account for what happens when the condition is actually an inequality, or any other types of conditional. We changed the implementation to consider the number of output tuples when the condition is an inequality, but not when it is a GREATER_THAN, GREATER_THAN_EQUAL, LESS_THAN, LESS_THAN_EQUAL. This is because it is difficult to estimate without the range of values of the attributes. 
 
-### 7. ExternalSort operator
+### 3. ExternalSort operator
 
 This operator uses the two-phase merge sort approach. It generates sorted runs in the first pass where the size of each run depends on how many buffer pages are available. Then it merges as many runs as possible in each pass until there is only one final run. The sorting is performed during `open()`. This means that external sort cannot support pipelining. When `next()`  is called, this operator then reads in the final sorted run batch by batch.
 
 `ExternalSort` takes in a list of `OrderByClause` objects in its constructor, which just contains an `Attribute` object and a sort direction `ASC/DESC`. Our SPJ parser only supports sorting all attributes in one direction (all ascending or all descending). It then compares tuples in the order of the `OrderByClauses` - for example, if you order by attribute `B` before `A`, then the tuples will be sorted by `B` first then `A`.
 
-### 8. Distinct operator
+### 4. Distinct operator
 
 This operator utilises external sort to group identical tuples together, and then eliminates adjacent copies of tuples. 
 
-### 9. OrderBy operator
+### 5. OrderBy operator
 
 This operator utilises ExternalSort to order tuples. When typing queries, make sure to put ASC or DESC on a newline.
 
@@ -78,3 +79,25 @@ This will order by `A` ascending.
 
 This will order by `A` descending first, then `B` descending.
 
+### 6. TIME Data format
+> Example table:
+> 
+> `6`
+> 
+> `278`
+> 
+> `flno INTEGER 100 PK 4`
+> 
+> `from STRING 20 NK 40`
+> 
+> `to STRING 20 NK 40`
+> 
+> `distance INTEGER 2500 NK 4`
+> 
+> `departs TIME 1 NK 95`
+> 
+> `arrives TIME 1 NK 95`
+
+The TIME data format is represented as a LocalTime object. The datatype is `TIME`, the range value is 
+not used (but you have to put some number, e.g. `1`), and the number of bytes used is `95` (derived by counting the size
+of LocalTime's data fields). You can use `ORDERBY` on dates.
