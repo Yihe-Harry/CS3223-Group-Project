@@ -63,14 +63,6 @@ public class SortMergeJoin extends Join {
         return left_sorter.open() && right_sorter.open();
     }
 
-    private void readLeft() {
-
-    }
-
-    private void readRight() {
-
-    }
-
     public Batch next() {
         // Check if end of either tables has been reached
         if (eosl || eosr) {
@@ -82,8 +74,8 @@ public class SortMergeJoin extends Join {
         Batch leftInbatch = null, rightInbatch = null;
 
         Tuple currLeftTuple = null;
-        ArrayList<Tuple> rightMatchingTuples = new ArrayList<>();
-        int rightIndex = 0;
+        ArrayList<Tuple> rightMatchingTuples = new ArrayList<>();   // Right tuples being matched currently
+        int rightIndex = 0;                                         // Current index to rightMatchingTuples
 
         // Keep on checking the incoming pages until result is full
         while (!result.isFull()) {
@@ -113,8 +105,9 @@ public class SortMergeJoin extends Join {
                         result.add(outtuple);
                         rightIndex = 1;
                     }
-                    // If cannot match, then we are reset the variables and continue
+                    // If cannot match, then we reset the variables and continue
                     else {
+                        currLeftTuple = null;
                         rightIndex = 0;
                         rightMatchingTuples.clear();
                     }
@@ -123,16 +116,18 @@ public class SortMergeJoin extends Join {
             // No current join is being done. We read in the next tuples
             else {
                 // Read in a left page
-                if (lcurs == 0 || lcurs == leftInbatch.size()) {
+                if (leftInbatch == null || lcurs == leftInbatch.size()) {
                     leftInbatch = left_sorter.next();
+                    lcurs = 0;
                     if (leftInbatch == null) {
                         eosl = true;
                         return result;
                     }
                 }
                 // Read in a right page
-                if (rcurs == 0 || rcurs == rightInbatch.size()) {
+                if (rightInbatch == null || rcurs == rightInbatch.size()) {
                     rightInbatch = right_sorter.next();
+                    rcurs = 0;
                     if (rightInbatch == null) {
                         eosr = true;
                         return result;
@@ -144,6 +139,7 @@ public class SortMergeJoin extends Join {
                 int comp = Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex);
 
                 // Tuples can be joined
+                // Store all matching right tuples into `rightMatchingTuples`
                 if (comp == 0) {
                     while (Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex) == 0) {
                         rightMatchingTuples.add(righttuple);
@@ -153,12 +149,13 @@ public class SortMergeJoin extends Join {
                             rightInbatch = right_sorter.next();
                             if (rightInbatch == null) {
                                 eosr = true;
-                                return result;
+                                break;
                             }
                         }
                         righttuple = rightInbatch.get(rcurs);
+                        currLeftTuple = lefttuple;
                     }
-                } else if (comp > 0) {
+                } else if (comp < 0) {
                     rcurs++;
                 } else {
                     lcurs++;

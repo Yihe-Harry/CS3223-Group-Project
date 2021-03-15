@@ -189,6 +189,10 @@ public class PlanCost {
             case JoinType.NESTEDJOIN:
                 joincost = leftpages * rightpages;
                 break;
+            case JoinType.SORTMERGE:
+                long B = node.getNumBuff();
+                joincost = externalSortCost(tuplesize, outtuples, B);
+                break;
             default:
                 System.out.println("join type is not supported");
                 return 0;
@@ -313,7 +317,21 @@ public class PlanCost {
         return numtuples;
     }
 
- /**
+
+    /**
+     * Calculate the cost of performing external sort
+     * @param tuplesize Size of tuples
+     * @param outtuples Number of output tuples
+     * @param B Number of buffer pages
+     * @return long, representing IO cost of performing sort
+     */
+    private long externalSortCost(long tuplesize, long outtuples, long B) {
+        long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
+        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
+        return (long) (2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1))));
+    }
+
+    /**
      * Calculate number of tuples produced by this operation, as well as Batch I/Os incurred.
      * @param node the Distinct operator
      * @return number of tuples produced by this operation
@@ -339,9 +357,8 @@ public class PlanCost {
         /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
         long tuplesize = schema.getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
-        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
         long B = node.getBuffer_size();
-        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
+        cost += externalSortCost(tuplesize, outtuples, B);
         return outtuples;
     }
 
@@ -362,12 +379,10 @@ public class PlanCost {
         /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
         long tuplesize = node.getSchema().getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
-        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
         long B = node.getBuffer_size();
-        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
+        cost += externalSortCost(tuplesize, outtuples, B);
         return outtuples;
     }
-
 }
 
 
