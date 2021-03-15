@@ -9,9 +9,7 @@ import qp.utils.*;
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
+import java.util.*;
 
 public class RandomInitialPlan {
 
@@ -22,6 +20,7 @@ public class RandomInitialPlan {
     ArrayList<Condition> selectionlist;   // List of select conditons
     ArrayList<Condition> joinlist;        // List of join conditions
     ArrayList<Attribute> groupbylist;
+    ArrayList<Attribute> orderbylist;
     int numJoin;            // Number of joins in this query
     HashMap<String, Operator> tab_op_hash;  // Table name to the Operator
     Operator root;          // Root of the query plan tree
@@ -33,6 +32,7 @@ public class RandomInitialPlan {
         selectionlist = sqlquery.getSelectionList();
         joinlist = sqlquery.getJoinList();
         groupbylist = sqlquery.getGroupByList();
+        orderbylist = sqlquery.getOrderByList();
         numJoin = joinlist.size();
     }
 
@@ -47,30 +47,23 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-
-        if (sqlquery.isDistinct()) {
-            System.err.println("Distinct is not implemented.");
-            System.exit(1);
-        }
-
         if (sqlquery.getGroupByList().size() > 0) {
             System.err.println("GroupBy is not implemented.");
             System.exit(1);
         }
 
-        if (sqlquery.getOrderByList().size() > 0) {
-            System.err.println("Orderby is not implemented.");
-            System.exit(1);
-        }
-
         tab_op_hash = new HashMap<>();
         createScanOp();
+        // Order by is put right below Scan to allow for ordering by
+        // attributes that don't appear in the final result
+        createOrderbyOp();
         createSelectOp();
         if (numJoin != 0) {
             createJoinOp();
         }
         createProjectOp();
-
+        // check for distinct flag
+        if (sqlquery.isDistinct()) createDistinctOp();
         return root;
     }
 
@@ -113,6 +106,35 @@ public class RandomInitialPlan {
             return;
         }
 
+    }
+
+    /**
+    *  Create order-by for each scan operator that has an order-by condition
+    * */
+    public void createOrderbyOp() {
+        OrderBy op = null;
+        // sort order-by list to make sure all attributes for the same table are handled at once
+        orderbylist.sort(Comparator.comparing(Attribute::getTabName));
+        for (int i = 0; i < orderbylist.size(); ++i) {
+            int j = i;
+            while (j + 1 < orderbylist.size()
+                    && orderbylist.get(j + 1).getTabName().equals(orderbylist.get(j).getTabName())) {
+                ++j;
+            }
+            // Attributes from i to j inclusive are for the same table
+            List<OrderByClause> sort_cond = new ArrayList<>();
+            for (; i <= j; ++i) {
+                sort_cond.add(new OrderByClause(orderbylist.get(i),
+                        sqlquery.isOrderByAsc() ? OrderByClause.ASC : OrderByClause.DESC));
+            }
+            Operator tempop = tab_op_hash.get(orderbylist.get(j).getTabName());
+            op = new OrderBy(OpType.ORDER_BY, tempop, BufferManager.numBuffer, sort_cond);
+            /* Set the same schema as the base relation */
+            op.setSchema(tempop.getSchema());
+            modifyHashtable(tempop, op);
+        }
+
+        if (op != null) root = op;
     }
 
     /**
@@ -210,5 +232,12 @@ public class RandomInitialPlan {
                 entry.setValue(newop);
             }
         }
+    }
+
+    public void createDistinctOp() {
+        // wrap a Distinct around the root
+        root = new Distinct(OpType.DISTINCT, root, BufferManager.numBuffer);
+        // set the schema of the Distinct operator to that of the base
+        root.setSchema(((Distinct) root).getBase().getSchema());
     }
 }

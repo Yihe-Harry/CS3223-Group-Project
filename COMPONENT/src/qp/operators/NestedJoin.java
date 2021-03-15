@@ -46,7 +46,7 @@ public class NestedJoin extends Join {
         int tuplesize = schema.getTupleSize();
         batchsize = Batch.getPageSize() / tuplesize;
 
-        /** find indices attributes of join conditions **/
+        /** find indices for attributes of join conditions **/
         leftindex = new ArrayList<>();
         rightindex = new ArrayList<>();
         for (Condition con : conditionList) {

@@ -22,6 +22,7 @@ public class SQLQuery {
     ArrayList<Attribute> orderbyList;    // List of attibutes in orderby clause
 
     boolean isDistinct = false;          // Whether distinct key word appeared in select clause
+    boolean orderByAsc = true;           // Whether to order by ASC or DESC
 
     public SQLQuery(ArrayList<Attribute> list1, ArrayList<String> list2, ArrayList<Condition> list3) {
         projectList = list1;
@@ -116,5 +117,13 @@ public class SQLQuery {
         if (joinList == null)
             return 0;
         return joinList.size();
+    }
+
+    public boolean isOrderByAsc() {
+        return orderByAsc;
+    }
+
+    public void setOrderByAsc(boolean orderByAsc) {
+        this.orderByAsc = orderByAsc;
     }
 }

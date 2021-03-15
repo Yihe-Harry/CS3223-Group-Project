@@ -78,6 +78,10 @@ public class PlanCost {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return getStatistics((Distinct) node);
+        } else if (node.getOpType() == OpType.ORDER_BY) {
+            return getStatistics((OrderBy) node);
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -109,6 +113,7 @@ public class PlanCost {
     /**
      * Projection will not change any statistics
      * No cost involved as done on the fly
+     * Same for Aggregate
      **/
     protected long getStatistics(Project node) {
         return calculateCost(node.getBase());
@@ -128,7 +133,7 @@ public class PlanCost {
         Schema leftschema = node.getLeft().getSchema();
         Schema rightschema = node.getRight().getSchema();
 
-        /** Get size of the tuple in output & correspondigly calculate
+        /** Get size of the tuple in output & correspondingly calculate
          ** buffer capacity, i.e., number of tuples per page **/
         long tuplesize = node.getSchema().getTupleSize();
         long outcapacity = Math.max(1, Batch.getPageSize() / tuplesize);
@@ -269,7 +274,7 @@ public class PlanCost {
         }
         StringTokenizer tokenizer = new StringTokenizer(line);
         if (tokenizer.countTokens() != 1) {
-            System.out.println("incorrect format of statastics file " + filename);
+            System.out.println("incorrect format of statistics file " + filename);
             System.exit(1);
         }
         String temp = tokenizer.nextToken();
@@ -306,6 +311,61 @@ public class PlanCost {
             System.exit(1);
         }
         return numtuples;
+    }
+
+ /**
+     * Calculate number of tuples produced by this operation, as well as Batch I/Os incurred.
+     * @param node the Distinct operator
+     * @return number of tuples produced by this operation
+     */
+    protected long getStatistics(Distinct node) {
+        long intuples = calculateCost(node.getBase());
+        if (!isFeasible) {
+            System.out.println("notFeasible");
+            return Long.MAX_VALUE;
+        }
+
+        // if your schema only has 1 column, calculate how many distinct tuples you will return,
+        // otherwise estimate that you will return all of your incoming tuples, because of the independence
+        // assumption
+        Schema schema = node.getSchema();
+        int schema_size = schema.getAttList().size();
+        long outtuples = intuples;
+        if (schema_size == 1) {
+            // get the number of distinct values for that attribute
+            outtuples = ht.get(schema.getAttribute(0));
+        }
+
+        /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
+        long tuplesize = schema.getTupleSize();
+        long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
+        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
+        long B = node.getBuffer_size();
+        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
+        return outtuples;
+    }
+
+    /**
+     * Calculate number of tuples produced by this operation, as well as Batch I/Os incurred.
+     * @param node the Distinct operator
+     * @return number of tuples produced by this operation
+     */
+    protected long getStatistics(OrderBy node) {
+        long outtuples = calculateCost(node.getBase());
+        if (!isFeasible) {
+            System.out.println("notFeasible");
+            return Long.MAX_VALUE;
+        }
+
+        // order by does not change your number of distinct values because you are just
+        // reordering tuples. It also does not change the number of tuples you output.
+        /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
+        long tuplesize = node.getSchema().getTupleSize();
+        long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
+        long N = (long) Math.ceil((double) outtuples / (double) pagesize);
+        long B = node.getBuffer_size();
+        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
+        return outtuples;
     }
 
 }

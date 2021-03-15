@@ -4,6 +4,7 @@
 
 package qp.optimizer;
 
+import org.w3c.dom.Attr;
 import qp.operators.*;
 import qp.utils.Attribute;
 import qp.utils.Condition;
@@ -65,6 +66,14 @@ public class RandomOptimizer {
         } else if (node.getOpType() == OpType.PROJECT) {
             Operator base = makeExecPlan(((Project) node).getBase());
             ((Project) node).setBase(base);
+            return node;
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            Operator base = makeExecPlan(((Distinct) node).getBase());
+            ((Distinct) node).setBase(base);
+            return node;
+        } else if (node.getOpType() == OpType.ORDER_BY) {
+            Operator base = makeExecPlan(((OrderBy) node).getBase());
+            ((OrderBy) node).setBase(base);
             return node;
         } else {
             return node;
@@ -190,7 +199,7 @@ public class RandomOptimizer {
     }
 
     /**
-     * Selects a random method choice for join wiht number joinNum
+     * Selects a random method choice for join with number joinNum
      * *  e.g., Nested loop join, Sort-Merge Join, Hash Join etc..,
      * * returns the modified plan
      **/
@@ -239,7 +248,6 @@ public class RandomOptimizer {
         Join op = (Join) findNodeAt(root, joinNum);
         Operator left = op.getLeft();
         Operator right = op.getRight();
-
         if (left.getOpType() == OpType.JOIN && right.getOpType() != OpType.JOIN) {
             transformLefttoRight(op, (Join) left);
         } else if (left.getOpType() != OpType.JOIN && right.getOpType() == OpType.JOIN) {
@@ -362,13 +370,15 @@ public class RandomOptimizer {
             return findNodeAt(((Select) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.PROJECT) {
             return findNodeAt(((Project) node).getBase(), joinNum);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return findNodeAt(((Distinct) node).getBase(), joinNum);
         } else {
             return null;
         }
     }
 
     /**
-     * Modifies the schema of operators which are modified due to selecing an alternative neighbor plan
+     * Modifies the schema of operators which are modified due to selecting an alternative neighbor plan
      **/
     private void modifySchema(Operator node) {
         if (node.getOpType() == OpType.JOIN) {
@@ -384,8 +394,16 @@ public class RandomOptimizer {
         } else if (node.getOpType() == OpType.PROJECT) {
             Operator base = ((Project) node).getBase();
             modifySchema(base);
-            ArrayList attrlist = ((Project) node).getProjAttr();
+            ArrayList<Attribute> attrlist = ((Project) node).getProjAttr();
             node.setSchema(base.getSchema().subSchema(attrlist));
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            Operator base = ((Distinct) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
+        } else if (node.getOpType() == OpType.ORDER_BY) {
+            Operator base = ((OrderBy) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
         }
     }
 }
