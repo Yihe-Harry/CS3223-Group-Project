@@ -294,7 +294,7 @@ public class PlanCost {
             outtuples = ht.get(schema.getAttribute(0));
         }
 
-        /* calculate I/O cost which will be equal to 2N*log(N/B)/log(B-1) */
+        /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
         long tuplesize = schema.getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
         long N = (long) Math.ceil((double) outtuples / (double) pagesize);
@@ -317,12 +317,12 @@ public class PlanCost {
 
         // order by does not change your number of distinct values because you are just
         // reordering tuples. It also does not change the number of tuples you output.
-        /* calculate I/O cost which will be equal to 2N*log(N/B)/log(B-1) */
+        /* calculate I/O cost which will be equal to 2N * (1 + 2N*log(N/B)/log(B-1)) */
         long tuplesize = node.getSchema().getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
         long N = (long) Math.ceil((double) outtuples / (double) pagesize);
         long B = node.getBuffer_size();
-        cost += 2 * N * (long) Math.ceil(Math.ceil(Math.log((double) N / B)) / Math.log(B - 1));
+        cost += 2 * N * (1 + Math.ceil(Math.log( Math.ceil(N /(double) B)) / Math.log(B - 1)));
         return outtuples;
     }
 

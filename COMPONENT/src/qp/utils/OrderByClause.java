@@ -24,4 +24,9 @@ public class OrderByClause {
     public int getDirection() {
         return direction;
     }
+
+    @Override
+    public Object clone() {
+        return new OrderByClause((Attribute) attr.clone(), direction);
+    }
 }
