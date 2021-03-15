@@ -108,7 +108,8 @@ public class Aggregate extends Project {
                         case Attribute.COUNT:
                             current.add(this.runningCount);
                             break;
-                        case Attribute.MIN, Attribute.MAX:
+                        case Attribute.MIN:
+                        case Attribute.MAX:
                             if (projectedType == Attribute.REAL) {
                                 current.add(this.runningAggregates.get(aggregateCount).floatValue());
                             } else if (projectedType == Attribute.INT) {
