@@ -14,6 +14,10 @@ public class SortMergeJoin extends Join {
     ArrayList<Integer> leftindex;                   // Indices of the join attributes in left table
     ArrayList<Integer> rightindex;                  // Indices of the join attributes in right table
 
+    ArrayList<Tuple> rightMatchingTuples = new ArrayList<>();   // Right tuples being matched currently
+    int rightIndex = 0;                                         // Current index to rightMatchingTuples
+    Tuple currLeftTuple = null;
+
     int lcurs;                                      // Cursor for left side buffer
     int rcurs;                                      // Cursor for right side buffer
     boolean eosl;                                   // Whether end of stream (left table) is reached
@@ -71,10 +75,6 @@ public class SortMergeJoin extends Join {
 
         // initialise output buffer
         Batch result = new Batch(batchsize);
-
-        Tuple currLeftTuple = null;
-        ArrayList<Tuple> rightMatchingTuples = new ArrayList<>();   // Right tuples being matched currently
-        int rightIndex = 0;                                         // Current index to rightMatchingTuples
 
         // Keep on checking the incoming pages until result is full
         while (!result.isFull()) {
