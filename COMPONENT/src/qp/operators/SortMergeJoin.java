@@ -7,17 +7,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SortMergeJoin extends Join {
-    private ExternalSort left_sorter = null;    // Operator to sort tuples
-    private ExternalSort right_sorter = null;   // Operator to sort tuples
-    int batchsize;                              // Number of tuples per out batch
+    private ExternalSort left_sorter = null;        // Operator to sort tuples
+    private ExternalSort right_sorter = null;       // Operator to sort tuples
+    int batchsize;                                  // Number of tuples per out batch
+    Batch leftInbatch = null, rightInbatch = null;  // Input batches
+    ArrayList<Integer> leftindex;                   // Indices of the join attributes in left table
+    ArrayList<Integer> rightindex;                  // Indices of the join attributes in right table
 
-    ArrayList<Integer> leftindex;               // Indices of the join attributes in left table
-    ArrayList<Integer> rightindex;              // Indices of the join attributes in right table
-
-    int lcurs;                                  // Cursor for left side buffer
-    int rcurs;                                  // Cursor for right side buffer
-    boolean eosl;                               // Whether end of stream (left table) is reached
-    boolean eosr;                               // Whether end of stream (right table) is reached
+    int lcurs;                                      // Cursor for left side buffer
+    int rcurs;                                      // Cursor for right side buffer
+    boolean eosl;                                   // Whether end of stream (left table) is reached
+    boolean eosr;                                   // Whether end of stream (right table) is reached
 
     public SortMergeJoin(Join jn) {
         super(jn.getLeft(), jn.getRight(), jn.getConditionList(), jn.getOpType());
@@ -71,7 +71,6 @@ public class SortMergeJoin extends Join {
 
         // initialise output buffer
         Batch result = new Batch(batchsize);
-        Batch leftInbatch = null, rightInbatch = null;
 
         Tuple currLeftTuple = null;
         ArrayList<Tuple> rightMatchingTuples = new ArrayList<>();   // Right tuples being matched currently
@@ -84,10 +83,11 @@ public class SortMergeJoin extends Join {
                 if (currLeftTuple != null) {
                     Tuple outtuple = currLeftTuple.joinWith(rightMatchingTuples.get(rightIndex));
                     result.add(outtuple);
-                    rightIndex = (rightIndex + 1) % rightMatchingTuples.size();
+                    rightIndex++;
 
                     // This current left tuple is done joining
-                    if (rightIndex == 0) {
+                    if (rightIndex == rightMatchingTuples.size()) {
+                        rightIndex = 0;
                         currLeftTuple = null;
                     }
                 }
@@ -101,9 +101,6 @@ public class SortMergeJoin extends Join {
                     // Can match
                     if (comp == 0) {
                         currLeftTuple = lefttuple;
-                        Tuple outtuple = currLeftTuple.joinWith(rightMatchingTuples.get(rightIndex));
-                        result.add(outtuple);
-                        rightIndex = 1;
                     }
                     // If cannot match, then we reset the variables and continue
                     else {
@@ -155,7 +152,16 @@ public class SortMergeJoin extends Join {
                         righttuple = rightInbatch.get(rcurs);
                         currLeftTuple = lefttuple;
                     }
-                } else if (comp < 0) {
+                    lcurs++;
+                    if (lcurs == leftInbatch.size()) {
+                        lcurs = 0;
+                        leftInbatch = left_sorter.next();
+                        if (leftInbatch == null) {
+                            eosr = true;
+                            break;
+                        }
+                    }
+                } else if (comp > 0) {
                     rcurs++;
                 } else {
                     lcurs++;
