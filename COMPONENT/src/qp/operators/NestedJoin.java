@@ -187,5 +187,4 @@ public class NestedJoin extends Join {
         f.delete();
         return true;
     }
-
 }
