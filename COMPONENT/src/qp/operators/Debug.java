@@ -94,9 +94,6 @@ public class Debug {
                 case JoinType.SORTMERGE:
                     System.out.print("SortMerge(");
                     break;
-                case JoinType.HASHJOIN:
-                    System.out.print("HashJoin(");
-                    break;
             }
             PPrint(((Join) node).getLeft());
             System.out.print("  [");

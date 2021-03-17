@@ -141,13 +141,11 @@ public class RandomDB {
                             }
                         }
                     } else if (datatype[j].equals("TIME")) {
-                        // hour, minute, second - second must be at least 1
-                        // otherwise the toString() cuts off the seconds and
-                        // just prints out the hour and minute
+                        // hour, minute, second
                         LocalTime time = LocalTime.of(
                                 random.nextInt(24),
                                 random.nextInt(60),
-                                1 + random.nextInt(59));
+                                random.nextInt(60));
                         time_set.add(time.hashCode());
                         outtbl.print(time + "\t");
                     }
