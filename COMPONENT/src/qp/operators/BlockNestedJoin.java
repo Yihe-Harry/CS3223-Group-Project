@@ -105,7 +105,7 @@ public class BlockNestedJoin extends Join {
                 //read in next line from left file
                 leftBatches[0] = left.next();
                 //Check whether the input is null or not
-                if (left.next() == null) {
+                if (leftBatches[0] == null) {
                     isLeftEnd = true;
                     return outBatch;
                 }
@@ -126,7 +126,7 @@ public class BlockNestedJoin extends Join {
                 }
             }
             int leftSize = leftBatches[0].size();
-            for (int i = 0; i < leftSize; i++) {
+            for (int i = 1; i < leftBatches.length; i++) {
                 if (leftBatches[i] == null) {
                     break;
                 }

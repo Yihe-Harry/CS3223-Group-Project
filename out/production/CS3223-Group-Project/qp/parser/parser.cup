@@ -36,14 +36,9 @@ action code {:
 terminal TokenValue ID;
 terminal COMMA,LEFTBRACKET,RIGHTBRACKET,DOT,STAR;
 terminal LESSTHAN,GREATERTHAN,LTOE,GTOE,EQUAL,NOTEQUAL;
-<<<<<<< HEAD
-terminal SELECT,FROM,WHERE,GROUPBY,ORDERBY,MAX,MIN,SUM,COUNT,AVG,DISTINCT;
-terminal TokenValue STRINGLIT;
-=======
 terminal SELECT,FROM,WHERE,GROUPBY,ORDERBY,MAX,MIN,SUM,COUNT,AVG,DISTINCT,DESC,ASC;
 terminal TokenValue STRINGLIT;
 terminal TokenValue TIME;
->>>>>>> 72a26933fc2e8613d5de3195097d1eeed5a5b5be
 
 /* Non terminals */
 nonterminal SQLQuery finalquery;
@@ -80,9 +75,6 @@ finalquery ::= sqlquery:s
             parser.query = s;
             RESULT = s;
         :}
-<<<<<<< HEAD
-		;
-=======
 		| sqlquery:s ORDERBY attlist:a DESC
         {:
             s.setOrderByList(a);
@@ -114,7 +106,6 @@ finalquery ::= sqlquery:s
             RESULT = s;
         :}
         ;
->>>>>>> 72a26933fc2e8613d5de3195097d1eeed5a5b5be
 
 sqlquery ::= SELECT attlist:a FROM tablelist:t WHERE conditionlist:c
 		{:
@@ -212,15 +203,12 @@ condition ::= attribute:at op:o STRINGLIT:s
 			c.setOpType(Condition.SELECT);
 			RESULT = c;
 		:}
-<<<<<<< HEAD
-=======
 		| attribute:at op:o TIME:t
 		{:
             Condition c = new Condition(at, o.getExprType(), t.text());
             c.setOpType(Condition.SELECT);
             RESULT = c;
 		:}
->>>>>>> 72a26933fc2e8613d5de3195097d1eeed5a5b5be
 		| attribute:a1 op:o attribute:a2
 		{:
 			Condition c = new Condition(a1,o.getExprType(),a2);
