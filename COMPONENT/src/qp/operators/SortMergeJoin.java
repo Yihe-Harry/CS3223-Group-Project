@@ -67,6 +67,30 @@ public class SortMergeJoin extends Join {
         return left_sorter.open() && right_sorter.open();
     }
 
+    private void incrementLcurs() {
+        lcurs++;
+        if (lcurs == leftInbatch.size()) {
+            lcurs = 0;
+            leftInbatch = left_sorter.next();
+            if (leftInbatch == null) {
+                eosl = true;
+                return;
+            }
+        }
+    }
+
+    private void incrementRcurs() {
+        rcurs++;
+        if (rcurs == rightInbatch.size()) {
+            rcurs = 0;
+            rightInbatch = right_sorter.next();
+            if (rightInbatch == null) {
+                eosr = true;
+                return;
+            }
+        }
+    }
+
     public Batch next() {
         // Check if end of either tables has been reached
         if (rightMatchingTuples.isEmpty() && currLeftTuple == null && (eosl || eosr)) {
@@ -109,6 +133,7 @@ public class SortMergeJoin extends Join {
                     // Can match
                     if (comp == 0) {
                         currLeftTuple = lefttuple;
+                        incrementLcurs();
                     }
                     // If cannot match, then we reset the variables and continue
                     else {
@@ -148,31 +173,15 @@ public class SortMergeJoin extends Join {
                 if (comp == 0) {
                     while (Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex) == 0) {
                         rightMatchingTuples.add(righttuple);
-                        rcurs++;
-                        if (rcurs == rightInbatch.size()) {
-                            rcurs = 0;
-                            rightInbatch = right_sorter.next();
-                            if (rightInbatch == null) {
-                                eosr = true;
-                                break;
-                            }
-                        }
+                        incrementRcurs();
                         righttuple = rightInbatch.get(rcurs);
                     }
                     currLeftTuple = lefttuple;
-                    lcurs++;
-                    if (lcurs == leftInbatch.size()) {
-                        lcurs = 0;
-                        leftInbatch = left_sorter.next();
-                        if (leftInbatch == null) {
-                            eosl = true;
-                            break;
-                        }
-                    }
+                    incrementLcurs();
                 } else if (comp > 0) {
-                    rcurs++;
+                    incrementRcurs();
                 } else {
-                    lcurs++;
+                    incrementLcurs();
                 }
             }
         }
