@@ -24,6 +24,7 @@ public class ExternalSort extends Operator {
     private final int tuples_per_page;      // number of tuples in a page
     private static int sorter_count = 0;    // index number generator
     private final int sorter_index;         // index number for this sorter
+
     /**
      * Initialises operator for multi-way merge-sort.
      *
