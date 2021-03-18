@@ -69,7 +69,7 @@ public class SortMergeJoin extends Join {
 
     public Batch next() {
         // Check if end of either tables has been reached
-        if (eosl || eosr) {
+        if (rightMatchingTuples.isEmpty() && currLeftTuple == null && (eosl || eosr)) {
             return null;
         }
 
@@ -94,6 +94,11 @@ public class SortMergeJoin extends Join {
                 // There are still matching tuples from right table
                 // The next left tuple may or may not match with these current tuples from the right
                 else {
+                    if (eosl || eosr) {
+                        currLeftTuple = null;
+                        rightMatchingTuples.clear();
+                        return result;
+                    }
                     Tuple lefttuple = leftInbatch.get(lcurs);
                     Tuple righttuple = rightMatchingTuples.get(0);
                     int comp = Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex);
