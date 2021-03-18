@@ -94,9 +94,12 @@ public class SortMergeJoin extends Join {
                 // There are still matching tuples from right table
                 // The next left tuple may or may not match with these current tuples from the right
                 else {
-                    if (eosl || eosr) {
+                    if (eosl) {
                         currLeftTuple = null;
                         rightMatchingTuples.clear();
+                        if (result.isEmpty()) {
+                            return null;
+                        }
                         return result;
                     }
                     Tuple lefttuple = leftInbatch.get(lcurs);
@@ -155,14 +158,14 @@ public class SortMergeJoin extends Join {
                             }
                         }
                         righttuple = rightInbatch.get(rcurs);
-                        currLeftTuple = lefttuple;
                     }
+                    currLeftTuple = lefttuple;
                     lcurs++;
                     if (lcurs == leftInbatch.size()) {
                         lcurs = 0;
                         leftInbatch = left_sorter.next();
                         if (leftInbatch == null) {
-                            eosr = true;
+                            eosl = true;
                             break;
                         }
                     }
