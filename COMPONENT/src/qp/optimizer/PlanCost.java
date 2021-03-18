@@ -194,8 +194,8 @@ public class PlanCost {
                 break;
             case JoinType.SORTMERGE:
                 long B = node.getNumBuff();
-                joincost = externalSortCost(leftuplesize, lefttuples, B);
-                joincost = externalSortCost(righttuplesize, righttuples, B);
+                joincost = externalSortCost(leftuplesize, lefttuples, B) +
+                        externalSortCost(righttuplesize, righttuples, B);
                 break;
             default:
                 System.out.println("join type is not supported");
