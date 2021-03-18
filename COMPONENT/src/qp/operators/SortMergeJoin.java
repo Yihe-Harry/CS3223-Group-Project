@@ -85,20 +85,26 @@ public class SortMergeJoin extends Join {
         return true;
     }
 
-    private void incrementLcurs() {
+    private boolean incrementLcurs() {
         lcurs++;
         if (lcurs == leftInbatch.size()) {
             lcurs = 0;
-            readLeft();
+            if (!readLeft()) {
+                return false;
+            }
         }
+        return true;
     }
 
-    private void incrementRcurs() {
+    private boolean incrementRcurs() {
         rcurs++;
         if (rcurs == rightInbatch.size()) {
             rcurs = 0;
-            readRight();
+            if (!readRight()) {
+                return false;
+            }
         }
+        return true;
     }
 
     public Batch next() {
@@ -179,7 +185,9 @@ public class SortMergeJoin extends Join {
                 if (comp == 0) {
                     while (Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex) == 0) {
                         rightMatchingTuples.add(righttuple);
-                        incrementRcurs();
+                        if (!incrementRcurs()) {
+                            break;
+                        }
                         righttuple = rightInbatch.get(rcurs);
                     }
                     currLeftTuple = lefttuple;
