@@ -67,15 +67,29 @@ public class SortMergeJoin extends Join {
         return left_sorter.open() && right_sorter.open();
     }
 
+    private boolean readLeft() {
+        leftInbatch = left_sorter.next();
+        if (leftInbatch == null) {
+            eosl = true;
+            return false;
+        }
+        return true;
+    }
+
+    private boolean readRight() {
+        rightInbatch = right_sorter.next();
+        if (rightInbatch == null) {
+            eosr = true;
+            return false;
+        }
+        return true;
+    }
+
     private void incrementLcurs() {
         lcurs++;
         if (lcurs == leftInbatch.size()) {
             lcurs = 0;
-            leftInbatch = left_sorter.next();
-            if (leftInbatch == null) {
-                eosl = true;
-                return;
-            }
+            readLeft();
         }
     }
 
@@ -83,11 +97,7 @@ public class SortMergeJoin extends Join {
         rcurs++;
         if (rcurs == rightInbatch.size()) {
             rcurs = 0;
-            rightInbatch = right_sorter.next();
-            if (rightInbatch == null) {
-                eosr = true;
-                return;
-            }
+            readRight();
         }
     }
 
@@ -147,21 +157,17 @@ public class SortMergeJoin extends Join {
             else {
                 // Read in a left page
                 if (leftInbatch == null || lcurs == leftInbatch.size()) {
-                    leftInbatch = left_sorter.next();
-                    lcurs = 0;
-                    if (leftInbatch == null) {
-                        eosl = true;
+                    if (!readLeft()) {
                         return result;
                     }
+                    lcurs = 0;
                 }
                 // Read in a right page
                 if (rightInbatch == null || rcurs == rightInbatch.size()) {
-                    rightInbatch = right_sorter.next();
-                    rcurs = 0;
-                    if (rightInbatch == null) {
-                        eosr = true;
+                    if (!readRight()) {
                         return result;
                     }
+                    rcurs = 0;
                 }
 
                 Tuple lefttuple = leftInbatch.get(lcurs);
