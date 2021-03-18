@@ -78,7 +78,6 @@ public class BlockNestedJoin extends Join {
                     outputStream.writeObject(rightPage);
                     rightPage = right.next();
                 }
-                outputStream.close();
             } catch (IOException e) {
                 System.out.println(WRITING_EXCEPTION_MESSAGE);
                 return false;

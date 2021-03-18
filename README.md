@@ -15,7 +15,9 @@ This repository presents our approach to this project. We are a team consisting 
 ## Implementation Outline
 
 Based on the given template, we have implemented the following operators in this SPJ query engine:
+
 - `AGGREGATE` operator (see [Aggregate.java](COMPONENT/src/qp/operators/Aggregate.java))
+- `BlockNestedJoin` operator (see [BlockNestedJoin.java](COMPONENT/src/qp/operators/BlockNestedJoin.java))
 - `ExternalSort` operator (see [ExternalSort.java](COMPONENT/src/qp/operators/ExternalSort.java)) 
 - `Distinct` operator (see [Distinct.java](COMPONENT/src/qp/operators/Distinct.java))
 - `Orderby` operator (see [Orderby.java](COMPONENT/src/qp/operators/Orderby.java))
@@ -23,21 +25,28 @@ Based on the given template, we have implemented the following operators in this
 
 ## Implementation
 
-### 1. Aggregate Operator
+### 1. Aggregate operator
 
 The Aggregate operator extends the Projection operator. It, similar to sorting, is a blocking operation. The pipelined approach does not work here. It scans through all the tuples of the underlying operator, accumulates the running aggregates for each aggregated attribute, and stores them internally. When `next()` is called, a Batch of the stored tuples is then released. 
 
-### 2. ExternalSort operator
+### 2. BlockNestedJoin operator
+
+This operator utilizes the given Join operator to perform Join with lower cost on the given condition of the join. It 
+will read in one block the file from the left of the Join operator first, then iteratively start to read the right side file, each time with one block.
+It will then perform Join base on the condition on the two batches, and write the result to the output buffer.
+Whenever the output buffer is full, output the result. After one full iteration of the right file, read in the next batch of the left file, and repeat this process until we have read finish the left side file.
+
+### 3. ExternalSort operator
 
 This operator uses the two-phase merge sort approach. It generates sorted runs in the first pass where the size of each run depends on how many buffer pages are available. Then it merges as many runs as possible in each pass until there is only one final run. The sorting is performed during `open()`. This means that external sort cannot support pipelining. When `next()`  is called, this operator then reads in the final sorted run batch by batch.
 
 `ExternalSort` takes in a list of `OrderByClause` objects in its constructor, which just contains an `Attribute` object and a sort direction `ASC/DESC`. Our SPJ parser only supports sorting all attributes in one direction (all ascending or all descending). It then compares tuples in the order of the `OrderByClauses` - for example, if you order by attribute `B` before `A`, then the tuples will be sorted by `B` first then `A`.
 
-### 3. Distinct operator
+### 4. Distinct operator
 
 This operator utilises external sort to group identical tuples together, and then eliminates adjacent copies of tuples. 
 
-### 4. OrderBy operator
+### 5. OrderBy operator
 
 This operator utilises ExternalSort to order tuples. When typing queries, make sure to put ASC or DESC on a newline.
 
@@ -75,7 +84,7 @@ This will order by `A` ascending.
 
 This will order by `A` descending first, then `B` descending.
 
-### 5. Sort Merge Join
+### 6. SortMergeJoin operator
 
 This operator utilizes ExternalSort to order the tuples given the conditions of the join. It sorts the left table based on the Attributes of the LHS of the join condition,a nd the right table based on the attributes of the RHS of the join condition. The two sorted tables are then merged together through `Tuple.compare`. 
 1. When tuples match, the right table is iterated down, tuples being stored, until the right tuple no longer match with the left tuple. 
