@@ -12,6 +12,6 @@ public class JoinType {
     public static final int SORTMERGE = 2;
 
     public static int numJoinTypes() {
-        return 2;
+        return 3;
     }
 }

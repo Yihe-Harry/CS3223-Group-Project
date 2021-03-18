@@ -387,14 +387,3 @@ public class PlanCost {
         return outtuples;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
