@@ -135,7 +135,7 @@ public class ExternalSort extends Operator {
             }
         }
 
-        return true;
+        return base.close();
     }
 
     /**
@@ -184,14 +184,9 @@ public class ExternalSort extends Operator {
 
             // sort all tuples
             tuples.sort(comp);
-//            System.out.println("Printing sorted tuples:");
-//            for (var t : tuples) {
-//                Debug.PPrint(t);
-//            }
 
             // create a temp file name for this sorted run
             String temp_file_name = "External_Sort_" + sorter_index + "_" + run_loc.size();
-//            System.out.println("External sort line 162: " + temp_file_name);
             run_loc.offer(temp_file_name); // External_Sort_0_0, External_Sort_0_1 etc without the .tbl extension
 
             // use TupleWriter to flush tuples to the temp file
