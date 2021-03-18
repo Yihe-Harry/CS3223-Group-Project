@@ -187,14 +187,15 @@ public class PlanCost {
 
         switch (joinType) {
             case JoinType.BLOCKNESTED:
-                joincost = leftpages + leftpages / numbuff * rightpages;
+                joincost = leftpages + (long) Math.ceil(leftpages / numbuff) * rightpages;
                 break;
             case JoinType.NESTEDJOIN:
                 joincost = leftpages * rightpages;
                 break;
             case JoinType.SORTMERGE:
                 long B = node.getNumBuff();
-                joincost = externalSortCost(tuplesize, outtuples, B);
+                joincost = externalSortCost(leftuplesize, lefttuples, B);
+                joincost = externalSortCost(righttuplesize, righttuples, B);
                 break;
             default:
                 System.out.println("join type is not supported");
