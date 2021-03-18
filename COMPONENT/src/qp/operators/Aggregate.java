@@ -25,6 +25,7 @@ public class Aggregate extends Project {
     int runningCount;
     int inputCursor;
     boolean allAggregate = true;                       // Boolean if all attributes are aggregated
+    boolean aggregateDone = false;
 
     /**
      * constructor
@@ -84,20 +85,20 @@ public class Aggregate extends Project {
             }
         }
         return true;
-    }
-
-    private Batch getNextBatch() {
-        if (this.tuples.isEmpty()) {
-            close();
-            return null;
         }
 
-        Batch result = new Batch(batchsize);
-        int aggregateCount = 0;
+        private Batch getNextBatch() {
+            if (this.tuples.isEmpty() || aggregateDone) {
+                close();
+                return null;
+            }
 
-        // Add till output batch is full or no more tuples to process
-        while (!result.isFull() && !this.tuples.isEmpty()) {
-            Tuple tuple = this.tuples.removeFirst();
+            Batch result = new Batch(batchsize);
+            int aggregateCount = 0;
+
+            // Add till output batch is full or no more tuples to process
+            while (!result.isFull() && !this.tuples.isEmpty()) {
+                Tuple tuple = this.tuples.removeFirst();
             ArrayList<Object> current = new ArrayList<>();
 
             // Accumulate all attributes into tuple
@@ -137,6 +138,7 @@ public class Aggregate extends Project {
 
             // If all attributes are aggregated, only need one tuple
             if (allAggregate) {
+                aggregateDone = true;
                 close();
                 return result;
             }
