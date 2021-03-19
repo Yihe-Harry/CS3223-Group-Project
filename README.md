@@ -20,7 +20,7 @@ Based on the given template, we have implemented the following operators in this
 - `BlockNestedJoin` operator (see [BlockNestedJoin.java](COMPONENT/src/qp/operators/BlockNestedJoin.java))
 - `ExternalSort` operator (see [ExternalSort.java](COMPONENT/src/qp/operators/ExternalSort.java)) 
 - `Distinct` operator (see [Distinct.java](COMPONENT/src/qp/operators/Distinct.java))
-- `Orderby` operator (see [Orderby.java](COMPONENT/src/qp/operators/OrderBy.java))
+- `OrderBy` operator (see [OrderBy.java](COMPONENT/src/qp/operators/OrderBy.java))
 - `SortMergeJoin` operator (see [SortMergeJoin.java](COMPONENT/src/qp/operators/SortMergeJoin.java))
 
 ## Implementation
