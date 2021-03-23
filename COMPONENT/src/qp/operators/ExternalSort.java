@@ -14,7 +14,7 @@ import java.util.*;
  * The number of Batches read/written is equal to 2N*(1 + log(N/B)/log(B-1)).
  */
 public class ExternalSort extends Operator {
-    private final Operator base;            // base operator
+    private Operator base;            // base operator
     private final List<OrderByClause> sort_cond;  // list of columns to sort by and whether it's asc or desc.
     private final int buffer_size;          // how many buffer pages for sorting
     private TupleWriter writer;             // the writer to write out our output pages
@@ -64,6 +64,15 @@ public class ExternalSort extends Operator {
         merge_sorted_runs();
 
         return true;
+    }
+
+    public Operator getBase() {
+        return base;
+    }
+
+    public void setBase(Operator base) {
+        this.base = base;
+        this.setSchema(base.getSchema());
     }
 
     /**

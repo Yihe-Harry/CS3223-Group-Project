@@ -49,7 +49,7 @@ This operator utilises external sort to group identical tuples together, and the
 ### 5. OrderBy operator
 
 This operator utilises ExternalSort to order tuples. When typing queries, make sure to put ASC or DESC on a newline.
-
+You can only select attributes that will appear in the final projection.
 > `SELECT *`
 >
 > `FROM Tbl`

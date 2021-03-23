@@ -52,20 +52,20 @@ public class RandomOptimizer {
             switch (joinType) {
                 case JoinType.NESTEDJOIN:
                     NestedJoin nj = new NestedJoin((Join) node);
-                    nj.setLeft(left);
-                    nj.setRight(right);
+                    nj.setLeft(makeExecPlan(left));
+                    nj.setRight(makeExecPlan(right));
                     nj.setNumBuff(numbuff);
                     return nj;
                 case JoinType.SORTMERGE:
                     SortMergeJoin sm = new SortMergeJoin((Join) node);
-                    sm.setLeft(left);
-                    sm.setRight(right);
+                    sm.setLeft(makeExecPlan(left));
+                    sm.setRight(makeExecPlan(right));
                     sm.setNumBuff(numbuff);
                     return sm;
                 case JoinType.BLOCKNESTED:
                     BlockNestedJoin bnj = new BlockNestedJoin((Join) node);
-                    bnj.setLeft(left);
-                    bnj.setRight(right);
+                    bnj.setLeft(makeExecPlan(left));
+                    bnj.setRight(makeExecPlan(right));
                     bnj.setNumBuff(numbuff);
                     return bnj;
                 default:
@@ -384,9 +384,9 @@ public class RandomOptimizer {
             return findNodeAt(((Project) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.DISTINCT) {
             return findNodeAt(((Distinct) node).getBase(), joinNum);
-        } else {
-            return null;
-        }
+        } else if (node.getOpType() == OpType.ORDER_BY) {
+            return findNodeAt(((OrderBy) node).getBase(), joinNum);
+        } else return null;
     }
 
     /**

@@ -54,9 +54,6 @@ public class RandomInitialPlan {
 
         tab_op_hash = new HashMap<>();
         createScanOp();
-        // Order by is put right below Scan to allow for ordering by
-        // attributes that don't appear in the final result
-        createOrderbyOp();
         createSelectOp();
         if (numJoin != 0) {
             createJoinOp();
@@ -64,6 +61,7 @@ public class RandomInitialPlan {
         createProjectOp();
         // check for distinct flag
         if (sqlquery.isDistinct()) createDistinctOp();
+        createOrderbyOp();
         return root;
     }
 
@@ -106,35 +104,6 @@ public class RandomInitialPlan {
             return;
         }
 
-    }
-
-    /**
-    *  Create order-by for each scan operator that has an order-by condition
-    * */
-    public void createOrderbyOp() {
-        OrderBy op = null;
-        // sort order-by list to make sure all attributes for the same table are handled at once
-        orderbylist.sort(Comparator.comparing(Attribute::getTabName));
-        for (int i = 0; i < orderbylist.size(); ++i) {
-            int j = i;
-            while (j + 1 < orderbylist.size()
-                    && orderbylist.get(j + 1).getTabName().equals(orderbylist.get(j).getTabName())) {
-                ++j;
-            }
-            // Attributes from i to j inclusive are for the same table
-            List<OrderByClause> sort_cond = new ArrayList<>();
-            for (; i <= j; ++i) {
-                sort_cond.add(new OrderByClause(orderbylist.get(i),
-                        sqlquery.isOrderByAsc() ? OrderByClause.ASC : OrderByClause.DESC));
-            }
-            Operator tempop = tab_op_hash.get(orderbylist.get(j).getTabName());
-            op = new OrderBy(OpType.ORDER_BY, tempop, BufferManager.numBuffer, sort_cond);
-            /* Set the same schema as the base relation */
-            op.setSchema(tempop.getSchema());
-            modifyHashtable(tempop, op);
-        }
-
-        if (op != null) root = op;
     }
 
     /**
@@ -239,5 +208,18 @@ public class RandomInitialPlan {
         root = new Distinct(OpType.DISTINCT, root, BufferManager.numBuffer);
         // set the schema of the Distinct operator to that of the base
         root.setSchema(((Distinct) root).getBase().getSchema());
+    }
+
+    /**
+     *  Create order-by around the root
+     * */
+    public void createOrderbyOp() {
+        List<OrderByClause> sort_cond = new ArrayList<>();
+        for (Attribute attribute : orderbylist) {
+            sort_cond.add(new OrderByClause(attribute,
+                    sqlquery.isOrderByAsc() ? OrderByClause.ASC : OrderByClause.DESC));
+        }
+
+        root = new OrderBy(OpType.ORDER_BY, root, BufferManager.numBuffer, sort_cond);
     }
 }

@@ -34,6 +34,7 @@ public class Distinct extends Operator {
 
     public void setBase(Operator base) {
         this.base = base;
+        this.setSchema(base.getSchema());
     }
 
     public int getBuffer_size() {

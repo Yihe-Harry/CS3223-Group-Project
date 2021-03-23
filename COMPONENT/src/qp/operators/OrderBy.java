@@ -12,7 +12,7 @@ import java.util.List;
  * helps to segregate the sorting cost for order-by from other operations such as sort-merge join.
  */
 public class OrderBy extends Operator {
-    private final ExternalSort sorter;             // the operator to sort our tuples
+    private ExternalSort sorter;             // the operator to sort our tuples
     private final int buffer_size;                 // how many buffer pages for sorting
     private final List<OrderByClause> sort_cond;
     private Operator base;                         // the base operator
@@ -22,7 +22,6 @@ public class OrderBy extends Operator {
         this.base = base;
         this.buffer_size = buffer_size;
         this.sort_cond = sort_cond;
-        sorter = new ExternalSort(base, sort_cond, buffer_size);
     }
 
     public int getBuffer_size() {
@@ -35,10 +34,13 @@ public class OrderBy extends Operator {
 
     public void setBase(Operator base) {
         this.base = base;
+        this.setSchema(base.getSchema());
     }
 
     @Override
     public boolean open() {
+        sorter = new ExternalSort(base, sort_cond, buffer_size);
+        sorter.setSchema(base.getSchema());
         return sorter.open();
     }
 

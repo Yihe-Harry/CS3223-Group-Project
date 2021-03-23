@@ -1,3 +1,2 @@
-SELECT *
+SELECT AVG(BILL.billid)
 FROM BILL
-ORDERBY BILL.billid,BILL.iid
